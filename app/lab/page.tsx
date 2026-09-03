@@ -20,7 +20,7 @@ export default function LabPage() {
           <li key={entry.slug} className="bg-surface p-5">
             <p className="text-sm">{entry.title}</p>
             <p className="mt-2 font-mono text-xs uppercase tracking-[0.14em] text-muted">
-              {entry.category}
+              {entry.categories.join(" / ")}
             </p>
           </li>
         ))}

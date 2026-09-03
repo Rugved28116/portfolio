@@ -17,9 +17,23 @@ export const LAB_CATEGORIES = [
   "Systems",
   "Networking",
   "Web",
+  "Embedded Systems",
+  "Linux",
 ] as const;
 
 export type LabCategory = (typeof LAB_CATEGORIES)[number];
+
+export const LAB_STATUSES = [
+  "COMPLETE",
+  "ACTIVE",
+  "BUILDING",
+  "PLANNED",
+  "ABANDONED",
+] as const;
+
+export type LabStatus = (typeof LAB_STATUSES)[number];
+
+export type LabEntryId = `RGB / ${"LAB" | "PLAN"}_${string}`;
 
 export type InternalRoute = "/" | "/work" | "/lab" | "/notes" | "/about";
 
@@ -52,11 +66,18 @@ export type ProjectCaseStudy = {
 };
 
 export type LabEntry = {
+  readonly id: LabEntryId;
   readonly slug: string;
   readonly title: string;
-  readonly category: LabCategory;
-  readonly summary?: string;
-  readonly status?: BuildStatus;
+  readonly shortDescription: string;
+  readonly categories: readonly LabCategory[];
+  readonly status?: LabStatus;
+  readonly year?: number;
+  readonly technologies?: readonly string[];
+  readonly hardware?: readonly string[];
+  readonly featured?: boolean;
+  readonly githubUrl?: string;
+  readonly thumbnail?: string;
 };
 
 export type Note = {

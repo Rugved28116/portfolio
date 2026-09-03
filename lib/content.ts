@@ -15,6 +15,14 @@ export function getProjectBySlug(slug: string): Project | undefined {
   return projects.find((project) => project.slug === slug);
 }
 
+export function getLabEntries(): readonly LabEntry[] {
+  return labEntries;
+}
+
+export function getLabEntryById(id: LabEntry["id"]): LabEntry | undefined {
+  return labEntries.find((entry) => entry.id === id);
+}
+
 export function getLabEntryBySlug(slug: string): LabEntry | undefined {
   return labEntries.find((entry) => entry.slug === slug);
 }
