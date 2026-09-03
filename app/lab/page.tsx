@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
+import { LabIndex } from "@/components/lab-index";
 import { PageIntro } from "@/components/page-intro";
-import { labEntries } from "@/content/lab";
+import { getLabEntries, getLabFilters } from "@/lib/content";
 
 export const metadata: Metadata = {
   title: "Lab",
@@ -9,22 +10,16 @@ export const metadata: Metadata = {
 };
 
 export default function LabPage() {
+  const entries = getLabEntries();
+  const filters = getLabFilters();
+
   return (
     <PageIntro
-      eyebrow="Lab"
-      title="Experiments, prototypes and technical investigations."
-      description="A workspace for documenting ongoing exploration across software and hardware."
+      eyebrow="RGB / Lab"
+      title="Engineering project log."
+      description="Experiments, prototypes, robotics, hardware, security, AI, Linux, networking and smaller builds."
     >
-      <ul className="grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">
-        {labEntries.map((entry) => (
-          <li key={entry.slug} className="bg-surface p-5">
-            <p className="text-sm">{entry.title}</p>
-            <p className="mt-2 font-mono text-xs uppercase tracking-[0.14em] text-muted">
-              {entry.categories.join(" / ")}
-            </p>
-          </li>
-        ))}
-      </ul>
+      <LabIndex entries={entries} filters={filters} />
     </PageIntro>
   );
 }

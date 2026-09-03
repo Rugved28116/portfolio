@@ -1,7 +1,7 @@
-import { labEntries } from "@/content/lab";
+import { labEntries, labFilters } from "@/content/lab";
 import { notes } from "@/content/notes";
 import { projects } from "@/content/projects";
-import type { LabEntry, Note, Project } from "@/content/types";
+import type { LabEntry, LabFilter, Note, Project } from "@/content/types";
 
 export function getProjects(): readonly Project[] {
   return projects;
@@ -17,6 +17,10 @@ export function getProjectBySlug(slug: string): Project | undefined {
 
 export function getLabEntries(): readonly LabEntry[] {
   return labEntries;
+}
+
+export function getLabFilters(): readonly LabFilter[] {
+  return labFilters;
 }
 
 export function getLabEntryById(id: LabEntry["id"]): LabEntry | undefined {

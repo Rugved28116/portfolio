@@ -1,4 +1,15 @@
-import type { LabEntry } from "@/content/types";
+import type { LabEntry, LabFilter } from "@/content/types";
+
+export const labFilters: readonly LabFilter[] = [
+  { label: "ALL", category: null },
+  { label: "SECURITY", category: "Security" },
+  { label: "AI", category: "AI" },
+  { label: "ROBOTICS", category: "Robotics" },
+  { label: "HARDWARE", category: "Hardware" },
+  { label: "SYSTEMS", category: "Systems" },
+  { label: "NETWORKING", category: "Networking" },
+  { label: "WEB", category: "Web" },
+];
 
 export const labEntries: readonly LabEntry[] = [
   {

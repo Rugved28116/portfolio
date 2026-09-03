@@ -80,6 +80,11 @@ export type LabEntry = {
   readonly thumbnail?: string;
 };
 
+export type LabFilter = {
+  readonly label: string;
+  readonly category: LabCategory | null;
+};
+
 export type Note = {
   readonly slug: string;
   readonly title: string;
