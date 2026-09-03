@@ -19,6 +19,10 @@ export function getLabEntries(): readonly LabEntry[] {
   return labEntries;
 }
 
+export function getFeaturedLabEntries(): readonly LabEntry[] {
+  return labEntries.filter((entry) => entry.featured === true);
+}
+
 export function getLabFilters(): readonly LabFilter[] {
   return labFilters;
 }
