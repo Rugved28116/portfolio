@@ -3,6 +3,10 @@ import { notes } from "@/content/notes";
 import { projects } from "@/content/projects";
 import type { LabEntry, Note, Project } from "@/content/types";
 
+export function getProjects(): readonly Project[] {
+  return projects;
+}
+
 export function getProjectBySlug(slug: string): Project | undefined {
   return projects.find((project) => project.slug === slug);
 }

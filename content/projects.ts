@@ -1,6 +1,6 @@
 import type { Project } from "@/content/types";
 
-export const projects = [
+export const projects: readonly Project[] = [
   { slug: "nyayasetu", title: "NyayaSetu" },
   { slug: "ask-my-notes", title: "AskMyNotes" },
   { slug: "finguard-ai", title: "FinGuard AI" },
@@ -9,6 +9,7 @@ export const projects = [
     slug: "computer-vision-assurance-framework",
     title: "Computer Vision Assurance Framework",
   },
-] satisfies readonly Project[];
+];
 
-// TODO: Add summaries, statuses, technologies, links and results only when confirmed.
+// TODO: Add descriptions, years, statuses, categories, technologies, roles,
+// thumbnails, links and case-study details only when they are confirmed.

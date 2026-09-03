@@ -31,9 +31,24 @@ export type NavigationItem = {
 export type Project = {
   readonly slug: string;
   readonly title: string;
-  readonly summary?: string;
+  readonly shortDescription?: string;
+  readonly year?: number;
   readonly status?: BuildStatus;
+  readonly categories?: readonly string[];
   readonly technologies?: readonly string[];
+  readonly role?: string;
+  readonly featured?: boolean;
+  readonly thumbnail?: string;
+  readonly githubUrl?: string;
+  readonly liveUrl?: string;
+  readonly caseStudy?: ProjectCaseStudy;
+};
+
+export type ProjectCaseStudy = {
+  readonly overview?: string;
+  readonly problem?: string;
+  readonly approach?: string;
+  readonly outcome?: string;
 };
 
 export type LabEntry = {
