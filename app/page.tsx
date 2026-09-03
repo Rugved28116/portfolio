@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Currently } from "@/components/currently";
+import { SelectedWork } from "@/components/selected-work";
 import { siteContent } from "@/content/site";
 
 export default function Home() {
@@ -74,6 +75,7 @@ export default function Home() {
         </div>
       </section>
       <Currently />
+      <SelectedWork />
     </>
   );
 }
