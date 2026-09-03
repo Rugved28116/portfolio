@@ -19,10 +19,14 @@ export const siteContent = {
       "I build, test and explore software, hardware and intelligent systems.",
   },
   currently: [
-    { label: "FOCUS", value: "Systems Security" },
-    { label: "BUILDING", value: "Robotics experiments" },
-    { label: "PLANNING", value: "Portable Cyberdeck" },
-    { label: "PLATFORM", value: "Arch Linux" },
+    { label: "FOCUS", value: "Systems Security", note: null },
+    { label: "BUILDING", value: "Robotics experiments", note: null },
+    {
+      label: "PLANNING",
+      value: "Portable Cyberdeck",
+      note: "Future project / not built",
+    },
+    { label: "PLATFORM", value: "Arch Linux", note: null },
   ],
   buildQueue: [{ title: "Portable Cyberdeck", status: "PLANNED" }],
   interests: [

@@ -55,6 +55,7 @@ export type Note = {
 export type CurrentItem = {
   readonly label: "FOCUS" | "BUILDING" | "PLANNING" | "PLATFORM";
   readonly value: string;
+  readonly note: string | null;
 };
 
 export type BuildQueueItem = {
