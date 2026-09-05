@@ -205,4 +205,7 @@ export type SiteContent = {
   readonly buildQueue: readonly BuildQueueItem[];
   readonly interests: readonly InterestArea[];
   readonly about: AboutContent;
+  readonly terminal: {
+    readonly prompt: string;
+  };
 };

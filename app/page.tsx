@@ -5,6 +5,7 @@ import { BuildQueue } from "@/components/build-queue";
 import { Currently } from "@/components/currently";
 import { LabPreview } from "@/components/lab-preview";
 import { NotesPreview } from "@/components/notes-preview";
+import { TerminalTrigger } from "@/components/portfolio-terminal";
 import { SelectedWork } from "@/components/selected-work";
 import { siteContent } from "@/content/site";
 
@@ -63,16 +64,14 @@ export default function Home() {
                 >
                   View work
                 </Link>
-                <button
-                  type="button"
-                  aria-label="Terminal (coming soon)"
-                  aria-disabled="true"
-                  title="Terminal coming soon"
-                  className="inline-flex min-h-12 cursor-not-allowed items-center justify-center gap-2 border border-border px-5 font-mono text-xs uppercase tracking-[0.14em] text-muted"
+                <TerminalTrigger
+                  ariaLabel="Open portfolio terminal"
+                  title="Open terminal"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 border border-border px-5 font-mono text-xs uppercase tracking-[0.14em] text-muted hover:border-muted hover:text-foreground focus-visible:outline-offset-4"
                 >
                   <span aria-hidden="true">&gt;_</span>
                   <span>Terminal</span>
-                </button>
+                </TerminalTrigger>
               </div>
             </div>
           </div>

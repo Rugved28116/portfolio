@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { TerminalTrigger } from "@/components/portfolio-terminal";
 import { siteContent } from "@/content/site";
 
 export function SiteHeader() {
@@ -30,15 +31,13 @@ export function SiteHeader() {
             ))}
           </ul>
         </nav>
-        <button
-          type="button"
-          aria-label="Terminal (coming soon)"
-          aria-disabled="true"
-          title="Terminal coming soon"
-          className="col-start-2 row-start-1 flex size-11 cursor-not-allowed items-center justify-center border border-border font-mono text-sm text-muted md:ml-4"
+        <TerminalTrigger
+          ariaLabel="Open portfolio terminal"
+          title="Open terminal"
+          className="col-start-2 row-start-1 flex size-11 items-center justify-center border border-border font-mono text-sm text-muted hover:border-muted hover:text-foreground focus-visible:outline-offset-2 md:ml-4"
         >
           <span aria-hidden="true">&gt;_</span>
-        </button>
+        </TerminalTrigger>
       </div>
     </header>
   );

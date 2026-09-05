@@ -108,6 +108,9 @@ export const siteContent = {
       resumeUrl: undefined,
     },
   },
+  terminal: {
+    prompt: "rugved@rgb-official:~$",
+  },
 } satisfies SiteContent;
 
 // TODO: Add confirmed contact and social links when they are provided.
