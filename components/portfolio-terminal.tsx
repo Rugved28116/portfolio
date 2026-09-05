@@ -12,6 +12,8 @@ import {
   type ReactNode,
 } from "react";
 
+import styles from "./portfolio-terminal.module.css";
+
 type TerminalLink = {
   readonly label: string;
   readonly url?: string;
@@ -97,6 +99,13 @@ const commandDefinitions = [
 ] as const;
 
 const commandNames = commandDefinitions.map(([name]) => name);
+const systemMark = [
+  " RRRR   GGGG  BBBB",
+  " R   R G      B   B",
+  " RRRR  G  GG  BBBB",
+  " R  R  G   G  B   B",
+  " R   R  GGG   BBBB  ___",
+].join("\n");
 const TerminalContext = createContext<TerminalContextValue | null>(null);
 
 function useTerminalContext() {
@@ -129,9 +138,20 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
   const [historyIndex, setHistoryIndex] = useState<number | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const caretRef = useRef<HTMLSpanElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLButtonElement | null>(null);
   const entryIdRef = useRef(0);
+  const savedInputRef = useRef("");
+  const shellUser = data.prompt.split(":")[0];
+
+  function syncCaret() {
+    const field = inputRef.current;
+    const caret = caretRef.current;
+    if (!field || !caret) return;
+    caret.style.left = `calc(${field.selectionStart ?? field.value.length}ch - ${field.scrollLeft}px)`;
+    caret.style.visibility = field.selectionStart === field.selectionEnd ? "visible" : "hidden";
+  }
 
   function restoreOpenerFocus() {
     requestAnimationFrame(() => {
@@ -177,7 +197,28 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
 
   useEffect(() => {
     outputRef.current?.scrollTo({ top: outputRef.current.scrollHeight });
-  }, [entries]);
+  }, [entries, isOpen]);
+
+  useEffect(() => {
+    syncCaret();
+  }, [input]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const viewport = window.visualViewport;
+    function fitViewport() {
+      dialogRef.current?.style.setProperty("--terminal-viewport-height", `${viewport?.height ?? window.innerHeight}px`);
+      dialogRef.current?.style.setProperty("--terminal-viewport-top", `${viewport?.offsetTop ?? 0}px`);
+      outputRef.current?.scrollTo({ top: outputRef.current.scrollHeight });
+    }
+    fitViewport();
+    viewport?.addEventListener("resize", fitViewport);
+    viewport?.addEventListener("scroll", fitViewport);
+    return () => {
+      viewport?.removeEventListener("resize", fitViewport);
+      viewport?.removeEventListener("scroll", fitViewport);
+    };
+  }, [isOpen]);
 
   function openConfiguredLink(link: TerminalLink, successMessage: string) {
     if (!link.url) return undefined;
@@ -188,11 +229,15 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
   }
 
   function getCommandOutput(command: string): readonly TerminalLine[] {
-    switch (command) {
+    switch (command.toLowerCase()) {
       case "help":
-        return commandDefinitions.map(([name, description]) => ({
-          text: `${name.padEnd(10)} ${description}`,
-        }));
+        return [
+          { text: "Available commands" },
+          { text: "" },
+          ...commandDefinitions.map(([name, description]) => ({
+            text: `  ${name.padEnd(10)} ${description}`,
+          })),
+        ];
       case "whoami":
         return [
           { text: data.identity.name.toUpperCase(), tone: "accent" },
@@ -202,7 +247,7 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
         ];
       case "projects":
         return data.projects.map((project, index) => ({
-          text: `${String(index + 1).padStart(2, "0")} / ${project.title}`,
+          text: `${String(index + 1).padStart(2, "0")}  ${project.title}`,
           href: project.href,
         }));
       case "lab":
@@ -260,15 +305,14 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
         const platform = findCurrentValue(data, "PLATFORM");
 
         return [
-          { text: "RGB PORTFOLIO", tone: "accent" },
-          { text: "─────────────", tone: "muted" },
-          { text: `USER       ${data.identity.name}` },
-          { text: `ALIAS      ${data.identity.alias}` },
-          ...(focus ? [{ text: `FOCUS      ${focus}` }] : []),
-          ...(building ? [{ text: `BUILDING   ${building}` }] : []),
-          ...(planning ? [{ text: `PLANNING   ${planning}` }] : []),
-          ...(platform ? [{ text: `PLATFORM   ${platform}` }] : []),
-          { text: `INTERESTS  ${data.interests.slice(0, 6).join(" / ")}` },
+          { text: "OS        RGB Portfolio" },
+          { text: `User      ${data.identity.name}` },
+          { text: `Alias     ${data.identity.alias}` },
+          ...(focus ? [{ text: `Focus     ${focus}` }] : []),
+          ...(building ? [{ text: `Building  ${building}` }] : []),
+          ...(planning ? [{ text: `Planning  ${planning}` }] : []),
+          ...(platform ? [{ text: `Platform  ${platform}` }] : []),
+          { text: `Interests ${data.interests.slice(0, 6).join(" / ")}` },
         ];
       }
       default:
@@ -303,16 +347,18 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
     const nextEntry: TerminalEntry = {
       id: entryIdRef.current,
       command: rawCommand,
-      lines: getCommandOutput(command),
+      lines: getCommandOutput(rawCommand),
     };
     entryIdRef.current += 1;
     setEntries((history) => [...history, nextEntry]);
   }
 
   function handleInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.nativeEvent.isComposing) return;
     if (event.key === "ArrowUp") {
       event.preventDefault();
       if (commandHistory.length === 0) return;
+      if (historyIndex === null) savedInputRef.current = input;
 
       const nextIndex =
         historyIndex === null
@@ -329,7 +375,7 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
 
       if (historyIndex >= commandHistory.length - 1) {
         setHistoryIndex(null);
-        setInput("");
+        setInput(savedInputRef.current);
       } else {
         const nextIndex = historyIndex + 1;
         setHistoryIndex(nextIndex);
@@ -338,11 +384,11 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
       return;
     }
 
-    if (event.key === "Tab") {
+    if (event.key === "Tab" && !event.shiftKey) {
       const inputPrefix = input.trim().toLowerCase();
       const matches = commandNames.filter((name) => name.startsWith(inputPrefix));
 
-      if (inputPrefix && matches.length === 1) {
+      if (inputPrefix && matches.length === 1 && matches[0] !== inputPrefix) {
         event.preventDefault();
         setInput(matches[0]);
       }
@@ -361,30 +407,36 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
           event.preventDefault();
           closeTerminal();
         }}
+        onKeyDown={(event) => {
+          if (event.key !== "Tab" || event.defaultPrevented) return;
+          const controls = event.currentTarget.querySelectorAll<HTMLElement>(
+            'button, a[href], input',
+          );
+          const first = controls[0];
+          const last = controls[controls.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last?.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first?.focus();
+          }
+        }}
         onClick={(event) => {
           if (event.target === event.currentTarget) closeTerminal();
         }}
-        className="m-auto h-[min(42rem,calc(100dvh-1.5rem))] w-[min(56rem,calc(100vw-1.5rem))] max-h-none max-w-none overflow-hidden border border-border bg-background p-0 text-foreground backdrop:bg-black/80"
+        className={styles.window}
       >
-        <div className="flex h-full min-h-0 flex-col font-mono">
-          <header className="flex min-h-12 items-center justify-between border-b border-border bg-surface pl-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <span
-                aria-hidden="true"
-                className="size-2 shrink-0 bg-accent"
-              />
-              <h2
-                id="portfolio-terminal-title"
-                className="truncate text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-foreground"
-              >
-                RGB Portfolio Terminal
-              </h2>
-            </div>
+        <div className={styles.session}>
+          <header className={styles.titleBar}>
+            <h2 id="portfolio-terminal-title" className={styles.title}>
+              {shellUser}: ~
+            </h2>
             <button
               type="button"
               aria-label="Close portfolio terminal"
               onClick={closeTerminal}
-              className="flex size-12 shrink-0 items-center justify-center border-l border-border text-lg text-muted hover:bg-background hover:text-foreground focus-visible:outline-offset-[-3px]"
+              className={styles.close}
             >
               <span aria-hidden="true">×</span>
             </button>
@@ -392,28 +444,35 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
 
           <div
             ref={outputRef}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 text-xs leading-6 sm:px-6 sm:text-sm"
+            className={styles.scrollback}
+            onClick={(event) => {
+              if ((event.target as HTMLElement).closest("a, button, input")) return;
+              if (window.getSelection()?.toString()) return;
+              inputRef.current?.focus();
+            }}
           >
-            <div id="portfolio-terminal-description" className="mb-6">
-              <p className="font-semibold uppercase tracking-[0.1em] text-accent">
-                Rugved Ganesh Bhor / RGB Official
-              </p>
-              <p className="mt-1 text-muted">
-                Portfolio navigation and information interface. Type
-                &apos;help&apos; to begin.
-              </p>
-            </div>
+            <p id="portfolio-terminal-description" className="sr-only">
+              Simulated portfolio terminal. Type help for commands. Use Up and
+              Down for history, Tab to complete a command, and Escape to close.
+            </p>
 
-            <div role="log" aria-live="polite" aria-relevant="additions">
+            <div role="log" aria-label="Terminal scrollback" aria-live="polite" aria-relevant="additions">
               {entries.map((entry) => (
-                <div key={entry.id} className="mb-5">
-                  <p className="break-words">
-                    <span className="text-accent">{data.prompt}</span>{" "}
+                <div key={entry.id} className={styles.entry}>
+                  <p className={styles.location}>
+                    {shellUser} <span className={styles.path}>~</span>
+                  </p>
+                  <p className={styles.command}>
+                    <span className={styles.symbol}>❯</span>{" "}
                     <span className="text-foreground">{entry.command}</span>
                   </p>
-                  <div className="mt-2 space-y-1 border-l border-border pl-3">
+                  <div className={entry.command.toLowerCase() === "neofetch" ? styles.systemInfo : styles.output}>
+                    {entry.command.toLowerCase() === "neofetch" ? (
+                      <pre aria-hidden="true" className={styles.systemMark}>{systemMark}</pre>
+                    ) : null}
+                    <div>
                     {entry.lines.map((line, index) => {
-                      const className = `block whitespace-pre-wrap break-words ${lineToneClass(line.tone)}`;
+                      const className = `${styles.line} ${lineToneClass(line.tone)}`;
 
                       if (!line.href) {
                         return (
@@ -429,7 +488,7 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
                             key={`${entry.id}-${index}`}
                             href={line.href}
                             onClick={closeTerminal}
-                            className={`${className} w-fit max-w-full underline decoration-border underline-offset-4 hover:text-accent focus-visible:text-accent`}
+                            className={`${className} ${styles.outputLink}`}
                           >
                             {line.text}
                           </Link>
@@ -440,48 +499,51 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
                         <a
                           key={`${entry.id}-${index}`}
                           href={line.href}
-                          className={`${className} w-fit max-w-full underline decoration-border underline-offset-4 hover:text-accent focus-visible:text-accent`}
+                          className={`${className} ${styles.outputLink}`}
                         >
                           {line.text}
                         </a>
                       );
                     })}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
+            <form onSubmit={executeInput} className={styles.prompt}>
+              <p aria-hidden="true" className={styles.location}>
+                {shellUser} <span className={styles.path}>~</span>
+              </p>
+              <label htmlFor="portfolio-terminal-input" className="sr-only">
+                Terminal command
+              </label>
+              <div className={styles.inputLine}>
+                <span aria-hidden="true" className={styles.symbol}>❯</span>
+                <div className={styles.inputWrap}>
+                  <input
+                    ref={inputRef}
+                    id="portfolio-terminal-input"
+                    value={input}
+                    onChange={(event) => {
+                      setInput(event.target.value);
+                      setHistoryIndex(null);
+                    }}
+                    onKeyDown={handleInputKeyDown}
+                    onSelect={syncCaret}
+                    onScroll={syncCaret}
+                    onFocus={syncCaret}
+                    autoCapitalize="none"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    enterKeyHint="send"
+                    className={styles.input}
+                  />
+                  <span ref={caretRef} aria-hidden="true" className={styles.caret} />
+                </div>
+              </div>
+            </form>
           </div>
-
-          <form
-            onSubmit={executeInput}
-            className="flex min-w-0 items-center gap-2 border-t border-border bg-surface px-4 py-3 sm:px-6"
-          >
-            <label
-              htmlFor="portfolio-terminal-input"
-              className="sr-only"
-            >
-              Terminal command
-            </label>
-            <span
-              aria-hidden="true"
-              className="shrink-0 text-[0.6875rem] text-accent sm:text-xs"
-            >
-              {data.prompt}
-            </span>
-            <input
-              ref={inputRef}
-              id="portfolio-terminal-input"
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              onKeyDown={handleInputKeyDown}
-              autoCapitalize="none"
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-              className="min-w-0 flex-1 border-0 bg-transparent p-1 text-sm text-foreground outline-none placeholder:text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-              placeholder="type a command"
-            />
-          </form>
         </div>
       </dialog>
     </TerminalContext.Provider>
