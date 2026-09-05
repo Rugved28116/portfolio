@@ -30,14 +30,46 @@ export const siteContent = {
   ],
   buildQueue: [{ title: "Portable Cyberdeck", status: "PLANNED" }],
   interests: [
-    "Cybersecurity",
-    "Artificial Intelligence",
-    "Systems",
-    "Robotics",
-    "Hardware",
-    "Web Development",
-    "Networking",
-    "Linux",
+    {
+      label: "CYBERSECURITY",
+      description:
+        "Systems security, AI security, integrity, assurance and networking.",
+      related: [
+        {
+          kind: "project",
+          slug: "computer-vision-assurance-framework",
+        },
+      ],
+    },
+    {
+      label: "AI",
+      description:
+        "RAG, agent workflows, computer vision and intelligent systems.",
+      related: [{ kind: "project", slug: "voice-enabled-rag" }],
+    },
+    {
+      label: "SYSTEMS",
+      description:
+        "Linux, networking, virtualization and systems thinking.",
+      related: [{ kind: "lab", slug: "portable-cyberdeck" }],
+    },
+    {
+      label: "ROBOTICS",
+      description:
+        "Autonomous systems, sensors, embedded control and small robots.",
+      related: [{ kind: "lab", slug: "line-tracker-robot" }],
+    },
+    {
+      label: "HARDWARE",
+      description:
+        "Embedded systems, electronics and planned portable computing.",
+      related: [{ kind: "lab", slug: "portable-cyberdeck" }],
+    },
+    {
+      label: "WEB",
+      description: "Full-stack interfaces, APIs and AI-enabled web systems.",
+      related: [{ kind: "project", slug: "ask-my-notes" }],
+    },
   ],
 } satisfies SiteContent;
 

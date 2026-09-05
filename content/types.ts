@@ -104,6 +104,28 @@ export type BuildQueueItem = {
   readonly status: BuildStatus;
 };
 
+export type InterestReference =
+  | {
+      readonly kind: "project";
+      readonly slug: string;
+    }
+  | {
+      readonly kind: "lab";
+      readonly slug: string;
+    };
+
+export type InterestArea = {
+  readonly label:
+    | "CYBERSECURITY"
+    | "AI"
+    | "SYSTEMS"
+    | "ROBOTICS"
+    | "HARDWARE"
+    | "WEB";
+  readonly description: string;
+  readonly related: readonly InterestReference[];
+};
+
 export type SiteContent = {
   readonly identity: {
     readonly name: string;
@@ -118,5 +140,5 @@ export type SiteContent = {
   };
   readonly currently: readonly CurrentItem[];
   readonly buildQueue: readonly BuildQueueItem[];
-  readonly interests: readonly string[];
+  readonly interests: readonly InterestArea[];
 };

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AreasOfInterest } from "@/components/areas-of-interest";
 import { BuildQueue } from "@/components/build-queue";
 import { Currently } from "@/components/currently";
 import { LabPreview } from "@/components/lab-preview";
@@ -80,6 +81,7 @@ export default function Home() {
       <SelectedWork />
       <LabPreview />
       <BuildQueue />
+      <AreasOfInterest />
     </>
   );
 }
