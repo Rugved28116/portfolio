@@ -166,6 +166,29 @@ export type InterestArea = {
   readonly related: readonly InterestReference[];
 };
 
+export type AboutInterest =
+  | "Cybersecurity"
+  | "AI"
+  | "Systems"
+  | "Robotics"
+  | "Hardware"
+  | "Web"
+  | "Networking"
+  | "Linux";
+
+export type AboutContent = {
+  readonly positioning: string;
+  readonly interests: readonly AboutInterest[];
+  readonly featuredReferences: readonly InterestReference[];
+  readonly approach: readonly string[];
+  readonly contact: {
+    readonly githubUrl?: string;
+    readonly linkedinUrl?: string;
+    readonly email?: string;
+    readonly resumeUrl?: string;
+  };
+};
+
 export type SiteContent = {
   readonly identity: {
     readonly name: string;
@@ -181,4 +204,5 @@ export type SiteContent = {
   readonly currently: readonly CurrentItem[];
   readonly buildQueue: readonly BuildQueueItem[];
   readonly interests: readonly InterestArea[];
+  readonly about: AboutContent;
 };

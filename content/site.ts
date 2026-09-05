@@ -71,6 +71,43 @@ export const siteContent = {
       related: [{ kind: "project", slug: "ask-my-notes" }],
     },
   ],
+  about: {
+    positioning:
+      "A Computer Science student and systems builder exploring cybersecurity, AI, robotics, hardware and software systems through practical projects and experiments.",
+    interests: [
+      "Cybersecurity",
+      "AI",
+      "Systems",
+      "Robotics",
+      "Hardware",
+      "Web",
+      "Networking",
+      "Linux",
+    ],
+    featuredReferences: [
+      { kind: "project", slug: "nyayasetu" },
+      { kind: "project", slug: "voice-enabled-rag" },
+      {
+        kind: "project",
+        slug: "computer-vision-assurance-framework",
+      },
+      { kind: "lab", slug: "line-tracker-robot" },
+      { kind: "lab", slug: "portable-cyberdeck" },
+    ],
+    approach: [
+      "Learn by building.",
+      "Experiment with software and hardware.",
+      "Understand how systems work.",
+      "Document failures and fixes.",
+      "Explore across security, AI, robotics and systems.",
+    ],
+    contact: {
+      githubUrl: undefined,
+      linkedinUrl: undefined,
+      email: undefined,
+      resumeUrl: undefined,
+    },
+  },
 } satisfies SiteContent;
 
 // TODO: Add confirmed contact and social links when they are provided.
