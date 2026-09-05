@@ -85,13 +85,53 @@ export type LabFilter = {
   readonly category: LabCategory | null;
 };
 
-export type Note = {
+type NoteBase = {
   readonly slug: string;
   readonly title: string;
-  readonly summary?: string;
-  readonly publishedAt?: string;
-  readonly topics?: readonly string[];
+  readonly type: string;
+  readonly description: string;
+  readonly tags: readonly string[];
+  readonly readingTime?: number;
+  readonly relatedLabEntryId?: LabEntryId;
+  readonly content: readonly NoteContentBlock[];
 };
+
+export type NoteContentBlock =
+  | {
+      readonly kind: "heading";
+      readonly text: string;
+    }
+  | {
+      readonly kind: "paragraph";
+      readonly text: string;
+    }
+  | {
+      readonly kind: "code";
+      readonly code: string;
+      readonly label: "Command" | "Output" | "Architecture" | "Example";
+    }
+  | {
+      readonly kind: "list";
+      readonly items: readonly string[];
+    }
+  | {
+      readonly kind: "ordered-list";
+      readonly items: readonly string[];
+    };
+
+export type PublishedNote = NoteBase & {
+  readonly date?: `${number}-${number}-${number}`;
+  readonly published: true;
+  readonly draft: false;
+};
+
+export type DraftNote = NoteBase & {
+  readonly date?: `${number}-${number}-${number}`;
+  readonly published: false;
+  readonly draft: true;
+};
+
+export type Note = PublishedNote | DraftNote;
 
 export type CurrentItem = {
   readonly label: "FOCUS" | "BUILDING" | "PLANNING" | "PLATFORM";

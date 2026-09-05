@@ -4,6 +4,7 @@ import { AreasOfInterest } from "@/components/areas-of-interest";
 import { BuildQueue } from "@/components/build-queue";
 import { Currently } from "@/components/currently";
 import { LabPreview } from "@/components/lab-preview";
+import { NotesPreview } from "@/components/notes-preview";
 import { SelectedWork } from "@/components/selected-work";
 import { siteContent } from "@/content/site";
 
@@ -82,6 +83,7 @@ export default function Home() {
       <LabPreview />
       <BuildQueue />
       <AreasOfInterest />
+      <NotesPreview />
     </>
   );
 }

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
+import { NoteList } from "@/components/note-list";
 import { PageIntro } from "@/components/page-intro";
-import { notes } from "@/content/notes";
+import { getPublishedNotes } from "@/lib/content";
 
 export const metadata: Metadata = {
   title: "Notes",
@@ -9,17 +10,19 @@ export const metadata: Metadata = {
 };
 
 export default function NotesPage() {
+  const notes = getPublishedNotes();
+
   return (
     <PageIntro
-      eyebrow="Notes"
+      eyebrow="RGB / Notes"
       title="Engineering notes and working knowledge."
-      description="Long-form note content will be added when the source material is ready."
+      description="Technical write-ups, debugging notes, build logs, project retrospectives and longer articles."
     >
-      {notes.length === 0 ? (
-        <p className="border border-border bg-surface p-5 font-mono text-sm text-muted">
-          TODO: Add confirmed note content.
-        </p>
-      ) : null}
+      <NoteList
+        notes={notes}
+        titleLevel={2}
+        emptyDescription="Confirmed technical notes will appear here when they are ready to publish."
+      />
     </PageIntro>
   );
 }

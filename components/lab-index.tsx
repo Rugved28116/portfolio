@@ -71,6 +71,7 @@ export function LabIndex({ entries, filters }: LabIndexProps) {
             return (
               <li key={entry.id} className="border-b border-border">
                 <article
+                  id={entry.slug}
                   aria-labelledby={`lab-entry-${entry.slug}`}
                   className="grid min-w-0 gap-7 py-8 sm:py-10 lg:grid-cols-[11rem_minmax(0,1fr)_16rem] lg:gap-10"
                 >

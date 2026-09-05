@@ -1,7 +1,13 @@
 import { labEntries, labFilters } from "@/content/lab";
 import { notes } from "@/content/notes";
 import { projects } from "@/content/projects";
-import type { LabEntry, LabFilter, Note, Project } from "@/content/types";
+import type {
+  LabEntry,
+  LabFilter,
+  Note,
+  Project,
+  PublishedNote,
+} from "@/content/types";
 
 export function getProjects(): readonly Project[] {
   return projects;
@@ -33,6 +39,33 @@ export function getLabEntryById(id: LabEntry["id"]): LabEntry | undefined {
 
 export function getLabEntryBySlug(slug: string): LabEntry | undefined {
   return labEntries.find((entry) => entry.slug === slug);
+}
+
+export function getNotes(): readonly Note[] {
+  return notes;
+}
+
+export function getPublishedNotes(): readonly PublishedNote[] {
+  return notes
+    .filter((note): note is PublishedNote => note.published)
+    .sort((a, b) => {
+      if (a.date === undefined) return b.date === undefined ? 0 : 1;
+      if (b.date === undefined) return -1;
+
+      return b.date.localeCompare(a.date);
+    });
+}
+
+export function getRecentPublishedNotes(
+  limit: number,
+): readonly PublishedNote[] {
+  return getPublishedNotes().slice(0, Math.max(0, limit));
+}
+
+export function getPublishedNoteBySlug(
+  slug: string,
+): PublishedNote | undefined {
+  return getPublishedNotes().find((note) => note.slug === slug);
 }
 
 export function getNoteBySlug(slug: string): Note | undefined {
