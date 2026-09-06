@@ -7,10 +7,10 @@ export const siteContent = {
     description:
       "Portfolio of Rugved Ganesh Bhor, also known as RGB Official, featuring projects and experiments across cybersecurity, AI, systems, robotics, hardware and software.",
     siteUrl: undefined,
-    githubUrl: undefined,
-    linkedinUrl: undefined,
-    email: undefined,
-    resumeUrl: undefined,
+    githubUrl: "https://github.com/Rugved28116",
+    linkedinUrl: "https://www.linkedin.com/in/rugved28116/",
+    email: "rugved4327@gmail.com",
+    resumeUrl: "/resume.pdf",
   },
   identity: {
     name: "Rugved Ganesh Bhor",
