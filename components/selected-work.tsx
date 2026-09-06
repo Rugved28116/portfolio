@@ -2,6 +2,7 @@ import { maintenancePart } from "@/lib/maintenance-parts";
 import Link from "next/link";
 
 import { getFeaturedProjects } from "@/lib/content";
+import { Reveal } from "@/components/reveal";
 
 export function SelectedWork() {
   const projects = getFeaturedProjects();
@@ -12,6 +13,7 @@ export function SelectedWork() {
       className="border-y border-border"
     >
       <div className="mx-auto w-full max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
+        <Reveal>
         <header className="flex flex-col gap-6 border-b border-border pb-7 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-accent">
@@ -38,6 +40,7 @@ export function SelectedWork() {
             </span>
           </Link>
         </header>
+        </Reveal>
 
         <ol>
           {projects.map((project, index) => {
@@ -51,6 +54,7 @@ export function SelectedWork() {
 
             return (
               <li key={project.slug} className="border-b border-border">
+                <Reveal delay={index * 55}>
                 <Link
                   href={`/work/${project.slug}`}
                   className="group grid min-w-0 grid-cols-[2rem_minmax(0,1fr)] gap-x-4 gap-y-6 px-2 py-7 hover:bg-surface focus-visible:bg-surface focus-visible:outline-offset-[-2px] sm:grid-cols-[3rem_minmax(0,1fr)] sm:px-3 sm:py-9 lg:grid-cols-[3rem_minmax(0,1fr)_minmax(16rem,20rem)] lg:gap-x-8"
@@ -115,6 +119,7 @@ export function SelectedWork() {
                     </dl>
                   ) : null}
                 </Link>
+                </Reveal>
               </li>
             );
           })}

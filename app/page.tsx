@@ -8,6 +8,7 @@ import { LabPreview } from "@/components/lab-preview";
 import { MaintenanceCrewBay } from "@/components/maintenance-crew-bay";
 import { NotesPreview } from "@/components/notes-preview";
 import { TerminalTrigger } from "@/components/portfolio-terminal";
+import { Reveal } from "@/components/reveal";
 import { SelectedWork } from "@/components/selected-work";
 import { siteContent } from "@/content/site";
 
@@ -19,6 +20,7 @@ export default function Home() {
         className="overflow-hidden border-b border-border"
       >
         <div className="mx-auto flex w-full max-w-6xl flex-col px-5 py-10 sm:px-8 sm:py-14 lg:py-16">
+          <Reveal>
           <dl className="grid gap-6 border-b border-border pb-8 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:gap-12">
             <div>
               <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-muted">
@@ -37,6 +39,7 @@ export default function Home() {
               </dd>
             </div>
           </dl>
+          </Reveal>
 
           <div className="flex min-h-72 items-center py-16 sm:min-h-96 sm:py-20 lg:py-24">
             <h1
@@ -47,7 +50,7 @@ export default function Home() {
             </h1>
           </div>
 
-          <div className="grid gap-10 border-t border-border pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,0.7fr)] lg:gap-16">
+          <Reveal className="grid gap-10 border-t border-border pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,0.7fr)] lg:gap-16">
             <div>
               <p className="font-mono text-xs uppercase leading-6 tracking-[0.14em] text-muted sm:text-sm">
                 {siteContent.hero.disciplines.join(" / ")}
@@ -76,7 +79,7 @@ export default function Home() {
                 </TerminalTrigger>
               </div>
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
       <Currently />

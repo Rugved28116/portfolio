@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { NoteContent } from "@/components/note-content";
+import { Reveal } from "@/components/reveal";
 import {
   getLabEntryById,
   getPublishedNoteBySlug,
@@ -54,6 +55,7 @@ export default async function NotePage({ params }: NotePageProps) {
 
   return (
     <article className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8 sm:py-20">
+      <Reveal>
       <header className="border-b border-border pb-10 sm:pb-12">
         <Link
           href="/notes"
@@ -134,11 +136,13 @@ export default async function NotePage({ params }: NotePageProps) {
           </aside>
         ) : null}
       </header>
+      </Reveal>
 
-      <div className="py-12 sm:py-16">
+      <Reveal className="py-12 sm:py-16">
         <NoteContent blocks={note.content} />
-      </div>
+      </Reveal>
 
+      <Reveal>
       <footer className="border-t border-border pt-7">
         <Link
           href="/notes"
@@ -152,6 +156,7 @@ export default async function NotePage({ params }: NotePageProps) {
           </span>
         </Link>
       </footer>
+      </Reveal>
     </article>
   );
 }

@@ -1,0 +1,32 @@
+.reveal {
+  --reveal-delay: 0ms;
+}
+
+.reveal[data-reveal-pending]:not([data-reveal-visible]) {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.reveal[data-reveal-visible] {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 360ms ease-out var(--reveal-delay),
+    transform 360ms ease-out var(--reveal-delay);
+}
+
+@media (max-width: 639px) {
+  .reveal[data-reveal-pending]:not([data-reveal-visible]) {
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal[data-reveal-pending]:not([data-reveal-visible]),
+  .reveal[data-reveal-visible] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

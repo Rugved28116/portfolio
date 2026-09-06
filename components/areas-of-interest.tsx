@@ -4,6 +4,7 @@ import Link from "next/link";
 import { siteContent } from "@/content/site";
 import type { InterestReference } from "@/content/types";
 import { getLabEntryBySlug, getProjectBySlug } from "@/lib/content";
+import { Reveal } from "@/components/reveal";
 
 function resolveReference(reference: InterestReference) {
   if (reference.kind === "project") {
@@ -34,7 +35,7 @@ export function AreasOfInterest() {
       aria-labelledby="areas-of-interest-title"
       className="border-b border-border bg-surface"
     >
-      <div className="mx-auto w-full max-w-6xl px-5 py-14 sm:px-8 sm:py-16">
+      <Reveal className="mx-auto w-full max-w-6xl px-5 py-14 sm:px-8 sm:py-16">
         <header className="grid gap-5 pb-8 md:grid-cols-[minmax(0,1fr)_minmax(18rem,0.7fr)] md:items-end md:gap-12">
           <div>
             <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-accent">
@@ -99,7 +100,7 @@ export function AreasOfInterest() {
             </li>
           ))}
         </ol>
-      </div>
+      </Reveal>
     </section>
   );
 }

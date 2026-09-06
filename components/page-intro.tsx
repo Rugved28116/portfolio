@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Reveal } from "@/components/reveal";
 
 type PageIntroProps = {
   eyebrow: string;
@@ -15,7 +16,7 @@ export function PageIntro({
 }: PageIntroProps) {
   return (
     <section className="mx-auto w-full max-w-6xl px-5 py-16 sm:px-8 sm:py-24">
-      <div className="max-w-3xl">
+      <Reveal className="max-w-3xl">
         <p className="font-mono text-xs uppercase tracking-[0.18em] text-accent">
           {eyebrow}
         </p>
@@ -25,7 +26,7 @@ export function PageIntro({
         <p className="mt-6 max-w-2xl text-base leading-7 text-muted sm:text-lg">
           {description}
         </p>
-      </div>
+      </Reveal>
       {children ? <div className="mt-12">{children}</div> : null}
     </section>
   );

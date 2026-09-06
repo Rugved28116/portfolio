@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getProjectBySlug, getProjects } from "@/lib/content";
+import { Reveal } from "@/components/reveal";
 
 export function generateStaticParams() {
   return getProjects().map((project) => ({ slug: project.slug }));
@@ -68,7 +69,7 @@ export default async function ProjectPage({
   return (
     <article>
       <header className="border-b border-border">
-        <div className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8 sm:py-20">
+        <Reveal className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8 sm:py-20">
           <Link
             href="/work"
             className="group inline-flex min-h-11 items-center gap-3 font-mono text-xs font-semibold uppercase tracking-[0.14em] focus-visible:outline-offset-4"
@@ -107,10 +108,10 @@ export default async function ProjectPage({
               </div>
             ) : null}
           </div>
-        </div>
+        </Reveal>
       </header>
 
-      <div className="mx-auto grid w-full max-w-6xl px-5 sm:px-8 lg:grid-cols-[13rem_minmax(0,1fr)]">
+      <Reveal className="mx-auto grid w-full max-w-6xl px-5 sm:px-8 lg:grid-cols-[13rem_minmax(0,1fr)]">
         {project.caseStudy?.overview ? (
           <section
             aria-labelledby="project-overview-title"
@@ -244,10 +245,10 @@ export default async function ProjectPage({
             </div>
           </section>
         ) : null}
-      </div>
+      </Reveal>
 
       <footer className="border-t border-border">
-        <div className="mx-auto w-full max-w-6xl px-5 py-7 sm:px-8">
+        <Reveal className="mx-auto w-full max-w-6xl px-5 py-7 sm:px-8">
           <Link
             href="/work"
             className="group inline-flex min-h-11 items-center gap-3 font-mono text-xs font-semibold uppercase tracking-[0.14em] focus-visible:outline-offset-4"
@@ -259,7 +260,7 @@ export default async function ProjectPage({
               Back to work
             </span>
           </Link>
-        </div>
+        </Reveal>
       </footer>
     </article>
   );

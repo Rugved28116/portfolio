@@ -32,6 +32,7 @@ export function SiteHeader() {
           </ul>
         </nav>
         <TerminalTrigger
+          discoveryHint
           ariaLabel="Open portfolio terminal"
           title="Open terminal"
           className="col-start-2 row-start-1 flex size-11 items-center justify-center border border-border font-mono text-sm text-muted hover:border-muted hover:text-foreground focus-visible:outline-offset-2 md:ml-4"

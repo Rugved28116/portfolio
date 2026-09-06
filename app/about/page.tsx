@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { siteContent } from "@/content/site";
+import { Reveal } from "@/components/reveal";
 import type { InterestReference } from "@/content/types";
 import { getLabEntryBySlug, getProjectBySlug } from "@/lib/content";
 
@@ -67,7 +68,7 @@ export default function AboutPage() {
         aria-labelledby="about-title"
         className="border-b border-border"
       >
-        <div className="mx-auto w-full max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
+        <Reveal className="mx-auto w-full max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
           <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-accent">
             RGB / About
           </p>
@@ -83,14 +84,14 @@ export default function AboutPage() {
           <p className="mt-10 max-w-3xl text-lg leading-8 text-foreground sm:text-xl sm:leading-9">
             {siteContent.about.positioning}
           </p>
-        </div>
+        </Reveal>
       </section>
 
       <section
         aria-labelledby="current-focus-title"
         className="border-b border-border bg-surface"
       >
-        <div className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8 sm:py-14">
+        <Reveal className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8 sm:py-14">
           <header className="border-b border-border pb-6">
             <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-accent">
               System state
@@ -122,14 +123,14 @@ export default function AboutPage() {
               </div>
             ))}
           </dl>
-        </div>
+        </Reveal>
       </section>
 
       <section
         aria-labelledby="about-interests-title"
         className="border-b border-border"
       >
-        <div className="mx-auto grid w-full max-w-6xl gap-8 px-5 py-12 sm:px-8 sm:py-14 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
+        <Reveal className="mx-auto grid w-full max-w-6xl gap-8 px-5 py-12 sm:px-8 sm:py-14 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
           <header>
             <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-accent">
               Capability index /{" "}
@@ -160,14 +161,14 @@ export default function AboutPage() {
               </li>
             ))}
           </ol>
-        </div>
+        </Reveal>
       </section>
 
       <section
         aria-labelledby="project-links-title"
         className="border-b border-border bg-surface"
       >
-        <div className="mx-auto w-full max-w-6xl px-5 py-14 sm:px-8 sm:py-16">
+        <Reveal className="mx-auto w-full max-w-6xl px-5 py-14 sm:px-8 sm:py-16">
           <header className="border-b border-border pb-7">
             <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-accent">
               Selected references / {String(featuredItems.length).padStart(2, "0")}
@@ -222,14 +223,14 @@ export default function AboutPage() {
               </li>
             ))}
           </ol>
-        </div>
+        </Reveal>
       </section>
 
       <section
         aria-labelledby="working-style-title"
         className="border-b border-border"
       >
-        <div className="mx-auto grid w-full max-w-6xl gap-8 px-5 py-12 sm:px-8 sm:py-14 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
+        <Reveal className="mx-auto grid w-full max-w-6xl gap-8 px-5 py-12 sm:px-8 sm:py-14 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-12">
           <header>
             <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-accent">
               Operating principles
@@ -259,7 +260,7 @@ export default function AboutPage() {
               </li>
             ))}
           </ol>
-        </div>
+        </Reveal>
       </section>
 
       {contactLinks.length > 0 ? (
@@ -267,7 +268,7 @@ export default function AboutPage() {
           aria-labelledby="contact-title"
           className="border-b border-border bg-surface"
         >
-          <div className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8 sm:py-14">
+          <Reveal className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8 sm:py-14">
             <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-accent">
               External links
             </p>
@@ -294,7 +295,7 @@ export default function AboutPage() {
                 </li>
               ))}
             </ul>
-          </div>
+          </Reveal>
         </section>
       ) : null}
     </>

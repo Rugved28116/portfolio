@@ -2,6 +2,7 @@ import { maintenancePart } from "@/lib/maintenance-parts";
 import Link from "next/link";
 
 import type { PublishedNote } from "@/content/types";
+import { Reveal } from "@/components/reveal";
 
 type NoteListProps = {
   notes: readonly PublishedNote[];
@@ -51,6 +52,7 @@ export function NoteList({
     <ol className="border-t border-border">
       {notes.map((note, index) => (
         <li key={note.slug} className="border-b border-border">
+          <Reveal delay={index * 55}>
           <article>
             <Link
               href={`/notes/${note.slug}`}
@@ -95,6 +97,7 @@ export function NoteList({
               </div>
             </Link>
           </article>
+          </Reveal>
         </li>
       ))}
     </ol>

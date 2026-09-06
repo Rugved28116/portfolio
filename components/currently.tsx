@@ -1,10 +1,11 @@
 import { maintenancePart } from "@/lib/maintenance-parts";
 import { siteContent } from "@/content/site";
+import { Reveal } from "@/components/reveal";
 
 export function Currently() {
   return (
     <section aria-labelledby="currently-title" className="bg-surface">
-      <div className="mx-auto w-full max-w-6xl px-5 sm:px-8">
+      <Reveal className="mx-auto w-full max-w-6xl px-5 sm:px-8">
         <div className="border-x border-border">
           <header className="flex items-baseline justify-between gap-4 border-b border-border px-4 py-4 sm:px-5">
             <h2
@@ -56,7 +57,7 @@ export function Currently() {
             })}
           </dl>
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { NoteList } from "@/components/note-list";
 import { getRecentPublishedNotes } from "@/lib/content";
+import { Reveal } from "@/components/reveal";
 
 export function NotesPreview() {
   const notes = getRecentPublishedNotes(3);
@@ -9,6 +10,7 @@ export function NotesPreview() {
   return (
     <section aria-labelledby="notes-preview-title" className="border-b border-border">
       <div className="mx-auto w-full max-w-6xl px-5 py-14 sm:px-8 sm:py-16">
+        <Reveal>
         <header className="flex flex-col gap-6 pb-8 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-accent">
@@ -34,6 +36,7 @@ export function NotesPreview() {
             </span>
           </Link>
         </header>
+        </Reveal>
 
         <NoteList
           maintenanceBreakable

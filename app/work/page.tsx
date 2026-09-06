@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PageIntro } from "@/components/page-intro";
+import { Reveal } from "@/components/reveal";
 import { projects } from "@/content/projects";
 
 export const metadata: Metadata = {
@@ -17,11 +18,12 @@ export default function WorkPage() {
       description="Project details will be added as the underlying information is confirmed."
     >
       <ul className="grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">
-        {projects.map((project) => (
+        {projects.map((project, index) => (
           <li key={project.slug} id={project.slug} className="min-w-0 bg-surface">
+            <Reveal delay={index * 55} className="h-full">
             <Link
               href={`/work/${project.slug}`}
-              className="group flex min-h-20 min-w-0 items-center justify-between gap-5 p-5 hover:bg-background focus-visible:bg-background focus-visible:outline-offset-[-2px]"
+              className="group flex min-h-20 h-full min-w-0 items-center justify-between gap-5 p-5 hover:bg-background focus-visible:bg-background focus-visible:outline-offset-[-2px]"
             >
               <span className="min-w-0 break-words text-sm font-medium leading-6 text-foreground group-hover:text-accent group-focus-visible:text-accent">
                 {project.title}
@@ -33,6 +35,7 @@ export default function WorkPage() {
                 →
               </span>
             </Link>
+            </Reveal>
           </li>
         ))}
       </ul>

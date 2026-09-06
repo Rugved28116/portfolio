@@ -2,6 +2,7 @@ import { maintenancePart } from "@/lib/maintenance-parts";
 import Link from "next/link";
 
 import { getFeaturedLabEntries } from "@/lib/content";
+import { Reveal } from "@/components/reveal";
 
 export function LabPreview() {
   const entries = getFeaturedLabEntries();
@@ -14,7 +15,8 @@ export function LabPreview() {
     >
       <div className="mx-auto w-full max-w-6xl px-5 py-14 sm:px-8 sm:py-16">
         <div className="border-y border-border lg:grid lg:grid-cols-[14rem_minmax(0,1fr)]">
-          <header className="flex flex-col justify-between gap-8 border-b border-border p-5 sm:p-6 lg:border-r lg:border-b-0">
+          <Reveal className="border-b border-border lg:border-r lg:border-b-0">
+          <header className="flex h-full flex-col justify-between gap-8 p-5 sm:p-6">
             <div>
               <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-accent">
                 Engineering log / {entryCount}
@@ -39,10 +41,12 @@ export function LabPreview() {
               </span>
             </Link>
           </header>
+          </Reveal>
 
           <ol className="min-w-0 divide-y divide-border">
-            {entries.map((entry) => (
+            {entries.map((entry, index) => (
               <li key={entry.id}>
+                <Reveal delay={index * 55}>
                 <article className="grid min-w-0 gap-6 p-5 sm:p-6 md:grid-cols-[minmax(0,1fr)_12rem] md:gap-8">
                   <div className="min-w-0">
                     <p {...maintenancePart(`lab-${entry.slug}-identifier`)} className="font-mono text-[0.6875rem] uppercase tracking-[0.16em] text-accent">
@@ -70,6 +74,7 @@ export function LabPreview() {
                     </p>
                   </div>
                 </article>
+                </Reveal>
               </li>
             ))}
           </ol>

@@ -1,0 +1,134 @@
+.control {
+  position: relative;
+}
+
+.controlHint {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 3px);
+  left: 0;
+  width: max-content;
+  max-width: min(13rem, 72vw);
+  padding: 2px 5px;
+  pointer-events: none;
+  border: 1px solid var(--rgb-border);
+  background: var(--rgb-background);
+  color: var(--rgb-accent);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.5625rem;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0.1em;
+  text-align: left;
+  white-space: nowrap;
+  animation: discovery-in 180ms ease-out both;
+}
+
+.terminalHint {
+  right: 0;
+  left: auto;
+}
+
+.guide,
+.crewNotice,
+.hoverHint {
+  position: fixed;
+  z-index: 35;
+  pointer-events: none;
+  border: 1px solid var(--rgb-border);
+  background: var(--rgb-background);
+  font-family: var(--font-geist-mono), monospace;
+  animation: discovery-in 180ms ease-out both;
+}
+
+.guide {
+  top: 7.25rem;
+  left: 1.25rem;
+  max-width: calc(100vw - 2.5rem);
+  padding: 7px 9px;
+}
+
+.guideTitle,
+.crewNotice,
+.hoverHint {
+  color: var(--rgb-accent);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.guideCopy {
+  margin-top: 2px;
+  color: var(--rgb-muted);
+  font-size: 0.625rem;
+  line-height: 1.45;
+}
+
+.mobileTitle {
+  display: none;
+}
+
+.crewNotice {
+  top: 7.25rem;
+  right: 1.25rem;
+  padding: 5px 7px;
+}
+
+.hoverHint {
+  padding: 3px 5px;
+  transform: translate(-50%, calc(-100% - 8px));
+  white-space: nowrap;
+  animation: none;
+}
+
+.terminalPromptHint {
+  width: fit-content;
+  margin: 0 0 0.5em;
+  padding-left: 1ch;
+  border-left: 1px solid var(--rgb-accent);
+  color: var(--rgb-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  animation: discovery-in 180ms ease-out both;
+}
+
+@keyframes discovery-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (min-width: 768px) {
+  .guide,
+  .crewNotice {
+    top: 4.75rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .controlHint {
+    top: 50%;
+    left: 3.5rem;
+    transform: translateY(-50%);
+    animation: none;
+  }
+
+  .terminalHint {
+    right: calc(100% + 5px);
+    left: auto;
+  }
+
+  .desktopTitle { display: none; }
+  .mobileTitle { display: inline; }
+  .terminalHint { white-space: normal; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .controlHint,
+  .guide,
+  .crewNotice,
+  .hoverHint,
+  .terminalPromptHint {
+    animation: none;
+  }
+}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { LabCategory, LabEntry, LabFilter } from "@/content/types";
+import { Reveal } from "@/components/reveal";
 
 type LabIndexProps = {
   entries: readonly LabEntry[];
@@ -18,7 +19,7 @@ export function LabIndex({ entries, filters }: LabIndexProps) {
 
   return (
     <div>
-      <div className="border-y border-border">
+      <Reveal className="border-y border-border">
         <div className="flex items-center justify-between gap-4 py-3">
           <p
             id="lab-filter-label"
@@ -58,11 +59,11 @@ export function LabIndex({ entries, filters }: LabIndexProps) {
             );
           })}
         </div>
-      </div>
+      </Reveal>
 
       {visibleEntries.length > 0 ? (
         <ul className="border-t border-border">
-          {visibleEntries.map((entry) => {
+          {visibleEntries.map((entry, index) => {
             const hasTechnologies =
               entry.technologies !== undefined && entry.technologies.length > 0;
             const hasHardware =
@@ -70,6 +71,7 @@ export function LabIndex({ entries, filters }: LabIndexProps) {
 
             return (
               <li key={entry.id} className="border-b border-border">
+                <Reveal delay={index * 55}>
                 <article
                   id={entry.slug}
                   aria-labelledby={`lab-entry-${entry.slug}`}
@@ -149,6 +151,7 @@ export function LabIndex({ entries, filters }: LabIndexProps) {
                     ) : null}
                   </aside>
                 </article>
+                </Reveal>
               </li>
             );
           })}

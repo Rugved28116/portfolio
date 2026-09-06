@@ -4,6 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createFilesystem, displayPath, type TerminalData } from "@/lib/terminal-filesystem";
 import { completeInput, runCommand, VIRTUAL_HOME, type TerminalLine } from "@/lib/terminal-shell";
+import {
+  completeDiscovery,
+  discoveryKeys,
+  isDiscoveryComplete,
+  resetDiscovery,
+  useDiscoveryState,
+} from "@/lib/discovery";
 export type { TerminalData } from "@/lib/terminal-filesystem";
 import {
   createContext,
@@ -18,6 +25,7 @@ import {
 } from "react";
 
 import styles from "./portfolio-terminal.module.css";
+import hintStyles from "./discovery-hints.module.css";
 
 type TerminalEntry = {
   readonly id: number;
@@ -40,6 +48,7 @@ type TerminalTriggerProps = {
   readonly className?: string;
   readonly ariaLabel?: string;
   readonly title?: string;
+  readonly discoveryHint?: boolean;
 };
 
 const systemMark = [
@@ -71,6 +80,7 @@ function lineToneClass(tone: TerminalLine["tone"]) {
 
 export function TerminalProvider({ children, data }: TerminalProviderProps) {
   const router = useRouter();
+  const discovery = useDiscoveryState();
   const nodes = useMemo(() => createFilesystem(data), [data]);
   const [cwd, setCwd] = useState(VIRTUAL_HOME);
   const startedAtRef = useRef<number | null>(null);
@@ -86,6 +96,7 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
   const openerRef = useRef<HTMLButtonElement | null>(null);
   const entryIdRef = useRef(0);
   const savedInputRef = useRef("");
+  const discoveryCommandCountRef = useRef(0);
   const shellUser = data.prompt.split(":")[0];
 
   function syncCaret() {
@@ -113,6 +124,7 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
   }
 
   function openTerminal(opener: HTMLButtonElement) {
+    completeDiscovery(discoveryKeys.terminal);
     openerRef.current = opener;
     startedAtRef.current ??= Date.now();
     setHistoryIndex(null);
@@ -173,6 +185,16 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
       data, nodes, cwd, history, now: new Date(),
       startedAt: startedAtRef.current ?? Date.now(),
     });
+    const commandName = rawCommand.split(/\s+/, 1)[0].toLowerCase();
+    if (result.action === "reset-discovery") {
+      resetDiscovery();
+      discoveryCommandCountRef.current = 0;
+    } else if (!isDiscoveryComplete(discoveryKeys.terminalHelp)) {
+      discoveryCommandCountRef.current += 1;
+      if (commandName === "help" || discoveryCommandCountRef.current >= 2) {
+        completeDiscovery(discoveryKeys.terminalHelp);
+      }
+    }
     setInput("");
     setHistoryIndex(null);
     setCommandHistory(history);
@@ -355,6 +377,12 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
                 </div>
               ))}
             </div>
+            {discovery.hydrated &&
+            !discovery.completed[discoveryKeys.terminalHelp] ? (
+              <p aria-hidden="true" className={hintStyles.terminalPromptHint}>
+                tip: type &quot;help&quot; to list commands
+              </p>
+            ) : null}
             <form onSubmit={executeInput} className={styles.prompt}>
               <p aria-hidden="true" className={styles.location}>
                 {shellUser}:<span className={styles.path}>{displayPath(cwd)}</span>$
@@ -400,8 +428,15 @@ export function TerminalTrigger({
   className,
   ariaLabel = "Open portfolio terminal",
   title,
+  discoveryHint = false,
 }: TerminalTriggerProps) {
   const { openTerminal } = useTerminalContext();
+  const discovery = useDiscoveryState();
+  const showHint =
+    discoveryHint &&
+    discovery.hydrated &&
+    discovery.completed[discoveryKeys.maintenance] &&
+    !discovery.completed[discoveryKeys.terminal];
 
   return (
     <button
@@ -409,9 +444,18 @@ export function TerminalTrigger({
       aria-label={ariaLabel}
       title={title}
       onClick={(event) => openTerminal(event.currentTarget)}
-      className={className}
+      className={`${hintStyles.control} ${className ?? ""}`}
     >
       {children}
+      {showHint ? (
+        <span
+          aria-hidden="true"
+          className={`${hintStyles.controlHint} ${hintStyles.terminalHint}`}
+        >
+          <span className={hintStyles.desktopTitle}>TRY TERMINAL ↑</span>
+          <span className={hintStyles.mobileTitle}>TRY &gt;_ →</span>
+        </span>
+      ) : null}
     </button>
   );
 }

@@ -1,5 +1,6 @@
 import { maintenancePart } from "@/lib/maintenance-parts";
 import { getLabEntryById } from "@/lib/content";
+import { Reveal } from "@/components/reveal";
 
 const buildLifecycle = [
   "PLANNED",
@@ -22,7 +23,7 @@ export function BuildQueue() {
       aria-labelledby="build-queue-title"
       className="border-b border-border"
     >
-      <div className="mx-auto w-full max-w-6xl px-5 py-14 sm:px-8 sm:py-16">
+      <Reveal className="mx-auto w-full max-w-6xl px-5 py-14 sm:px-8 sm:py-16">
         <header className="grid gap-5 border-b border-border pb-7 md:grid-cols-[minmax(0,1fr)_minmax(18rem,0.7fr)] md:items-end md:gap-12">
           <div>
             <p className="font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-accent">
@@ -126,7 +127,7 @@ export function BuildQueue() {
             })}
           </ol>
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }

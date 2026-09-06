@@ -1,7 +1,7 @@
 import { childrenOf, displayPath, renderTree, resolvePath, VIRTUAL_HOME, type TerminalData, type TerminalLink, type VirtualNode } from "./terminal-filesystem";
 
 export type TerminalLine = { readonly text: string; readonly href?: string; readonly tone?: "default" | "muted" | "accent" | "error" };
-type Result = { lines: readonly TerminalLine[]; cwd?: string; action?: "clear" | "exit"; destination?: string };
+type Result = { lines: readonly TerminalLine[]; cwd?: string; action?: "clear" | "exit" | "reset-discovery"; destination?: string };
 export type ShellContext = { data: TerminalData; nodes: readonly VirtualNode[]; cwd: string; history: readonly string[]; now: Date; startedAt: number };
 type Command = { name: string; aliases?: readonly string[]; description: string; usage: string; examples: string; handler: (args: string[], context: ShellContext, rest: string) => Result };
 const output = (...text: string[]): Result => ({ lines: text.flatMap((value) => value.split("\n").map((text) => ({ text }))) });
@@ -32,6 +32,18 @@ function search(context: ShellContext, term: string, grep: boolean): Result {
 
 export const commands: readonly Command[] = [
   { name: "help", description: "List portfolio shell commands.", usage: "help", examples: "help", handler: () => output("Simulated portfolio shell. No operating-system commands are executed.", ...commands.map((command) => `${command.name}${command.aliases ? ` (${command.aliases.join(", ")})` : ""} — ${command.description}`), "Use man <command> for details. Tab completes names and paths; Shift+Tab moves focus.") },
+  { name: "tutorial", description: "Show or reset portfolio discovery hints.", usage: "tutorial [reset]", examples: "tutorial\ntutorial reset", handler: (args) => {
+    if (args.length === 0) return output(
+      "RGB_       Toggle Maintenance Mode",
+      ">_         Open portfolio terminal",
+      "help       Show terminal commands",
+      "Run tutorial reset to show discovery hints again.",
+    );
+    if (args.length === 1 && args[0].toLowerCase() === "reset") {
+      return { lines: [{ text: "discovery hints reset" }], action: "reset-discovery" };
+    }
+    return error("Usage: tutorial [reset]");
+  } },
   { name: "man", description: "Read command documentation.", usage: "man <command>", examples: "man cd\nman open\nman find", handler: (args) => {
     const command = commands.find((command) => command.name === args[0] || command.aliases?.includes(args[0]));
     return command ? output("NAME", `  ${command.name} — ${command.description}`, "USAGE", `  ${command.usage}`, "DESCRIPTION", `  ${command.description} All filesystem operations use in-memory portfolio data.`, "EXAMPLES", command.examples) : error(`man: no manual entry for ${args[0] || "(missing command)"}`);
