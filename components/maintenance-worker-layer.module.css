@@ -19,6 +19,63 @@
   transition: transform var(--worker-duration) cubic-bezier(0.35, 0.02, 0.2, 1);
 }
 
+.speechBubble {
+  position: absolute;
+  z-index: 3;
+  bottom: 42px;
+  left: 22px;
+  width: max-content;
+  max-width: min(148px, calc(100vw - 52px));
+  padding: 5px 7px 4px;
+  border: 1px solid #596064;
+  background: #151719;
+  box-shadow: inset 2px 0 0 var(--rgb-accent), 0 2px 0 rgb(0 0 0 / 32%);
+  color: #c7cbcd;
+  font-family: var(--font-geist-mono);
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.025em;
+  pointer-events: none;
+  animation: rgb-worker-speech var(--speech-lifetime) linear both;
+}
+
+.speechBubble::after {
+  position: absolute;
+  bottom: -4px;
+  left: 8px;
+  width: 6px;
+  height: 6px;
+  border-right: 1px solid #596064;
+  border-bottom: 1px solid #596064;
+  content: "";
+  background: #151719;
+  transform: rotate(45deg);
+}
+
+.speechBubble[data-bubble-side="left"] {
+  right: 22px;
+  left: auto;
+}
+
+.speechBubble[data-bubble-side="left"]::after {
+  right: 8px;
+  left: auto;
+}
+
+.speechBubble[data-bubble-vertical="below"] {
+  top: 42px;
+  bottom: auto;
+}
+
+.speechBubble[data-bubble-vertical="below"]::after {
+  top: -4px;
+  bottom: auto;
+  border: 0;
+  border-top: 1px solid #596064;
+  border-left: 1px solid #596064;
+}
+
 .ladder,
 .scaffold {
   position: absolute;
@@ -278,10 +335,29 @@
   to { scale: 1 1; }
 }
 
+@keyframes rgb-worker-speech {
+  0% { opacity: 0; translate: 0 2px; }
+  10%, 82% { opacity: 1; translate: 0 0; }
+  100% { opacity: 0; translate: 0 -1px; }
+}
+
+@media (max-width: 39.999rem) {
+  .speechBubble {
+    max-width: min(112px, calc(100vw - 48px));
+    padding: 4px 6px;
+    font-size: 8px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .worker { transition-duration: 0ms !important; }
 
   .ladder { animation: none !important; }
+
+  .speechBubble {
+    animation: none !important;
+    opacity: 1;
+  }
 
   .body,
   .legLeft,

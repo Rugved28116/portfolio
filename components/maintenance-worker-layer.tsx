@@ -92,6 +92,14 @@ type ScheduledTask = {
   readonly signature: string;
   readonly timer: ReturnType<typeof setTimeout>;
 };
+type SpeechContext = "damage" | "cluster" | "inspection" | "repair" | "completion" | "rest";
+type WorkerSpeech = {
+  readonly workerId: string;
+  readonly text: string;
+  readonly context: SpeechContext;
+  readonly duration: number;
+  readonly expiresAt: number;
+};
 
 const WORKER_WIDTH = 30;
 const WORKER_HEIGHT = 34;
@@ -102,6 +110,40 @@ const CELEBRATION_DURATION = 360;
 const LADDER_THRESHOLD = 75;
 const LADDER_DEPLOY_DURATION = 300;
 const LADDER_PACK_DURATION = 220;
+const speechPhrases: Record<WorkerPersonality, Record<Exclude<SpeechContext, "damage" | "cluster">, readonly string[]>> = {
+  engineer: {
+    inspection: ["checking alignment"],
+    repair: ["repairing", "almost there"],
+    completion: ["system stable", "that should hold"],
+    rest: ["system stable"],
+  },
+  inspector: {
+    inspection: ["inspection", "checking integrity", "interesting", "no fault detected"],
+    repair: ["checking integrity"],
+    completion: ["looks stable"],
+    rest: ["logs look clean"],
+  },
+  carrier: {
+    inspection: ["tooling ready"],
+    repair: ["parts incoming", "got the replacement", "tooling ready"],
+    completion: ["delivery complete"],
+    rest: ["restocking"],
+  },
+  slacker: {
+    inspection: ["quality control", "totally working"],
+    repair: ["busy.", "totally working"],
+    completion: ["quality control"],
+    rest: ["on break", "five more minutes", "maintenance pause", "totally necessary"],
+  },
+  generalist: {
+    inspection: ["checking"],
+    repair: ["on it", "repair queued"],
+    completion: ["done"],
+    rest: ["checking"],
+  },
+};
+const damageSpeech = ["new fault", "damage detected", "again?", "repair requested"] as const;
+const clusterSpeech = ["that's a lot", "crew needed", "multiple faults"] as const;
 const desktopPersonalities: readonly WorkerPersonality[] = [
   "engineer",
   "inspector",
@@ -127,6 +169,12 @@ function hashText(value: string) {
   let hash = 0;
   for (const character of value) hash = (hash * 31 + character.charCodeAt(0)) | 0;
   return Math.abs(hash);
+}
+
+function phrasesFor(personality: WorkerPersonality, context: SpeechContext) {
+  if (context === "damage") return damageSpeech;
+  if (context === "cluster") return clusterSpeech;
+  return speechPhrases[personality][context];
 }
 
 function initialWorkers(): readonly Worker[] {
@@ -488,12 +536,17 @@ function shouldCarry(worker: Worker, damageId: string) {
   return worker.personality === "carrier" && hashText(damageId) % 2 === 0;
 }
 
-function WorkerBot({ worker }: { readonly worker: Worker }) {
+function WorkerBot({ worker, speech }: { readonly worker: Worker; readonly speech?: WorkerSpeech }) {
   const style = {
     "--worker-x": `${worker.x}px`,
     "--worker-y": `${worker.y}px`,
     "--worker-duration": `${worker.duration}ms`,
   } as CSSProperties;
+  const speechStyle = speech ? {
+    "--speech-lifetime": `${speech.duration}ms`,
+  } as CSSProperties : undefined;
+  const bubbleSide = worker.x > window.innerWidth - 170 ? "left" : "right";
+  const bubbleVertical = worker.y < HEADER_CLEARANCE + 54 ? "below" : "above";
 
   return (
     <div
@@ -509,6 +562,18 @@ function WorkerBot({ worker }: { readonly worker: Worker }) {
       data-worker-rest-kind={worker.restKind}
       style={style}
     >
+      {speech ? (
+        <span
+          className={styles.speechBubble}
+          data-worker-speech={speech.context}
+          data-bubble-side={bubbleSide}
+          data-bubble-vertical={bubbleVertical}
+          aria-hidden="true"
+          style={speechStyle}
+        >
+          {speech.text}
+        </span>
+      ) : null}
       <div className={styles.facing} data-facing={worker.facing}>
         <svg className={styles.bot} viewBox="0 0 30 34" width="30" height="34" focusable="false" shapeRendering="crispEdges">
           <g className={styles.body}>
@@ -575,16 +640,151 @@ function WorkerScaffold({ scaffold }: { readonly scaffold: Scaffold }) {
 
 export function MaintenanceWorkerLayer({ brokenElementIds, beginRepair, repairElement }: WorkerLayerProps) {
   const [system, setSystem] = useState<WorkerSystem>(() => ({ workers: initialWorkers(), queue: [], scaffolds: [] }));
+  const [speech, setSpeech] = useState<readonly WorkerSpeech[]>([]);
   const [viewportRevision, setViewportRevision] = useState(0);
   const stateTasks = useRef(new Map<string, ScheduledTask>());
   const spawnTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const speechTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const speechRef = useRef<readonly WorkerSpeech[]>([]);
+  const globalSpeechCooldownUntil = useRef(0);
+  const workerSpeechCooldowns = useRef(new Map<string, number>());
+  const lastWorkerPhrase = useRef(new Map<string, string>());
+  const previousWorkerStates = useRef(new Map<string, WorkerState>());
+  const previousBrokenIds = useRef(new Set(brokenElementIds));
+  const reactedScaffolds = useRef(new Set<string>());
   const viewportFrame = useRef<number | undefined>(undefined);
   const brokenIdsRef = useRef(new Set(brokenElementIds));
   const brokenKey = useMemo(() => [...brokenElementIds].sort().join("\u0000"), [brokenElementIds]);
+  const scaffoldKey = useMemo(() => system.scaffolds.map((scaffold) => scaffold.id).sort().join("\u0000"), [system.scaffolds]);
+
+  const dismissSpeech = useCallback((workerId: string) => {
+    const timer = speechTimers.current.get(workerId);
+    if (timer) clearTimeout(timer);
+    speechTimers.current.delete(workerId);
+    const next = speechRef.current.filter((entry) => entry.workerId !== workerId);
+    if (next.length === speechRef.current.length) return;
+    speechRef.current = next;
+    setSpeech(next);
+  }, []);
+
+  const trySpeak = useCallback((worker: Worker, context: SpeechContext) => {
+    const now = Date.now();
+    const notable = context === "cluster";
+    if (globalSpeechCooldownUntil.current === 0) {
+      globalSpeechCooldownUntil.current = now + 8000;
+      if (!notable) return false;
+    }
+    if (!notable && now < globalSpeechCooldownUntil.current) return false;
+    if (!notable && now < (workerSpeechCooldowns.current.get(worker.id) ?? 0)) return false;
+
+    const chance: Record<SpeechContext, number> = {
+      damage: 0.28,
+      cluster: 0.82,
+      inspection: 0.16,
+      repair: 0.12,
+      completion: 0.24,
+      rest: 0.2,
+    };
+    const mobileAdjustment = window.innerWidth < 640 ? 0.55 : 1;
+    if (Math.random() > chance[context] * mobileAdjustment) return false;
+
+    const active = speechRef.current.filter((entry) => entry.expiresAt > now);
+    if (active.some((entry) => entry.workerId === worker.id)) return false;
+    const limit = notable && window.innerWidth >= 640 ? 2 : 1;
+    if (active.length >= limit) return false;
+
+    const pool = phrasesFor(worker.personality, context);
+    const previous = lastWorkerPhrase.current.get(worker.id);
+    const options = pool.filter((phrase) => phrase !== previous);
+    const available = options.length > 0 ? options : pool;
+    const text = available[Math.floor(Math.random() * available.length)];
+    const duration = Math.round(window.innerWidth < 640
+      ? 1200 + Math.random() * 700
+      : 1400 + Math.random() * 1100);
+    const entry: WorkerSpeech = { workerId: worker.id, text, context, duration, expiresAt: now + duration };
+    const next = [...active, entry];
+
+    speechRef.current = next;
+    setSpeech(next);
+    lastWorkerPhrase.current.set(worker.id, text);
+    workerSpeechCooldowns.current.set(worker.id, now + 12000);
+    globalSpeechCooldownUntil.current = now + (window.innerWidth < 640
+      ? 14000 + Math.random() * 6000
+      : 8000 + Math.random() * 12000);
+    speechTimers.current.set(worker.id, setTimeout(() => dismissSpeech(worker.id), duration));
+    return true;
+  }, [dismissSpeech]);
 
   useEffect(() => {
     brokenIdsRef.current = new Set(brokenElementIds);
   }, [brokenElementIds]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const previous = previousBrokenIds.current;
+      const added = brokenElementIds.filter((id) => !previous.has(id));
+      previousBrokenIds.current = new Set(brokenElementIds);
+      const damageId = added[0];
+      if (!damageId) return;
+      const element = findMaintenanceElement(damageId);
+      const rect = element ? visibleRect(element) : undefined;
+      const candidates = system.workers.filter((worker) => worker.state !== "spawning");
+      if (!rect || candidates.length === 0) return;
+      const target = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      const worker = [...candidates].sort((a, b) =>
+        Math.hypot(a.x - target.x, a.y - target.y) - Math.hypot(b.x - target.x, b.y - target.y))[0];
+      trySpeak(worker, "damage");
+    }, 0);
+    return () => clearTimeout(timer);
+    // IDs are compared as a set; worker movement must not retrigger damage reactions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brokenKey, trySpeak]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      for (const scaffold of system.scaffolds) {
+        if (reactedScaffolds.current.has(scaffold.id)) continue;
+        reactedScaffolds.current.add(scaffold.id);
+        const speakingWorkerIds = new Set(speechRef.current.map((entry) => entry.workerId));
+        const assigned = system.workers.find((worker) =>
+          !speakingWorkerIds.has(worker.id) && worker.assignedDamageId && scaffold.damageIds.includes(worker.assignedDamageId));
+        const available = assigned ?? system.workers.find((worker) =>
+          worker.state !== "spawning" && !speakingWorkerIds.has(worker.id));
+        if (available) trySpeak(available, "cluster");
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+    // Geometry changes do not create a new cluster reaction.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scaffoldKey, trySpeak]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      for (const worker of system.workers) {
+        const previous = previousWorkerStates.current.get(worker.id);
+        previousWorkerStates.current.set(worker.id, worker.state);
+        if (!previous || previous === worker.state) continue;
+        if (worker.state === "inspecting" && !worker.assignedDamageId) trySpeak(worker, "inspection");
+        else if (worker.state === "repairing") trySpeak(worker, "repair");
+        else if (worker.state === "celebrating") trySpeak(worker, "completion");
+        else if (worker.state === "resting" || worker.state === "inspecting-console") trySpeak(worker, "rest");
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [system.workers, trySpeak]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      for (const entry of speechRef.current) {
+        if (entry.context !== "rest") continue;
+        const worker = system.workers.find((candidate) => candidate.id === entry.workerId);
+        if (!worker || worker.assignedDamageId || !["resting", "inspecting-console"].includes(worker.state)) {
+          dismissSpeech(entry.workerId);
+        }
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [system.workers, dismissSpeech]);
 
   useEffect(() => {
     function refreshViewport() {
@@ -1203,15 +1403,25 @@ export function MaintenanceWorkerLayer({ brokenElementIds, beginRepair, repairEl
   useEffect(() => () => {
     for (const task of stateTasks.current.values()) clearTimeout(task.timer);
     for (const timer of spawnTimers.current) clearTimeout(timer);
+    for (const timer of speechTimers.current.values()) clearTimeout(timer);
     stateTasks.current.clear();
     spawnTimers.current = [];
+    speechTimers.current.clear();
+    speechRef.current = [];
+    globalSpeechCooldownUntil.current = 0;
+    workerSpeechCooldowns.current.clear();
+    lastWorkerPhrase.current.clear();
+    previousWorkerStates.current.clear();
+    reactedScaffolds.current.clear();
   }, []);
 
   return (
     <div className={styles.layer} aria-hidden="true" data-worker-layer data-repair-queue-size={system.queue.length}>
       {system.scaffolds.map((scaffold) => <WorkerScaffold key={scaffold.id} scaffold={scaffold} />)}
       {system.workers.map((worker) => <WorkerLadder key={`ladder-${worker.id}`} worker={worker} />)}
-      {system.workers.map((worker) => <WorkerBot key={worker.id} worker={worker} />)}
+      {system.workers.map((worker) => (
+        <WorkerBot key={worker.id} worker={worker} speech={speech.find((entry) => entry.workerId === worker.id)} />
+      ))}
     </div>
   );
 }
