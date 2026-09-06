@@ -1,0 +1,200 @@
+.boundary {
+  width: 100%;
+  max-width: 72rem;
+  min-height: 88px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+  pointer-events: none;
+}
+
+.bay {
+  position: relative;
+  width: 204px;
+  height: 78px;
+  margin-left: auto;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.label {
+  position: absolute;
+  top: 3px;
+  right: 0;
+  color: #6f767a;
+  font-family: var(--font-geist-mono);
+  font-size: 7px;
+  letter-spacing: 0.12em;
+}
+
+.floor {
+  position: absolute;
+  right: 0;
+  bottom: 8px;
+  width: 196px;
+  height: 2px;
+  background: #34393c;
+}
+
+.floor::before {
+  position: absolute;
+  right: 12px;
+  bottom: 0;
+  width: 32px;
+  height: 2px;
+  content: "";
+  background: var(--rgb-accent);
+  opacity: 0.65;
+}
+
+.bench {
+  position: absolute;
+  bottom: 10px;
+  left: 8px;
+  width: 76px;
+  height: 31px;
+}
+
+.benchBack,
+.benchSeat,
+.benchLegLeft,
+.benchLegRight,
+.crateHandle,
+.cratePanel,
+.consoleScreen,
+.consoleSignal,
+.consoleStand {
+  position: absolute;
+  display: block;
+}
+
+.benchBack {
+  inset: 0 3px auto;
+  height: 5px;
+  border: 1px solid #596064;
+  background: #222629;
+}
+
+.benchSeat {
+  inset: 15px 0 auto;
+  height: 4px;
+  background: #8c9499;
+  box-shadow: 0 2px 0 #252a2d;
+}
+
+.benchLegLeft,
+.benchLegRight {
+  top: 19px;
+  width: 3px;
+  height: 11px;
+  background: #4e5559;
+}
+
+.benchLegLeft { left: 7px; }
+.benchLegRight { right: 7px; }
+
+.crate {
+  position: absolute;
+  bottom: 10px;
+  left: 99px;
+  width: 28px;
+  height: 25px;
+  border: 2px solid #62686c;
+  background: #1b1e20;
+}
+
+.crateHandle {
+  top: -7px;
+  left: 7px;
+  width: 10px;
+  height: 6px;
+  border: 2px solid #62686c;
+  border-bottom: 0;
+}
+
+.cratePanel {
+  inset: 6px 4px auto;
+  height: 2px;
+  background: #34393c;
+  box-shadow: 0 6px 0 #34393c;
+}
+
+.console {
+  position: absolute;
+  right: 8px;
+  bottom: 10px;
+  width: 42px;
+  height: 39px;
+}
+
+.consoleScreen {
+  top: 0;
+  right: 0;
+  width: 34px;
+  height: 22px;
+  border: 2px solid #596064;
+  background: #17191b;
+  box-shadow: inset 0 0 0 3px #222629;
+}
+
+.consoleScreen::before,
+.consoleScreen::after {
+  position: absolute;
+  left: 6px;
+  height: 2px;
+  content: "";
+  background: var(--rgb-accent);
+}
+
+.consoleScreen::before { top: 6px; width: 13px; }
+.consoleScreen::after { top: 11px; width: 8px; opacity: 0.55; }
+
+.consoleSignal {
+  top: -3px;
+  right: 3px;
+  width: 3px;
+  height: 3px;
+  background: var(--rgb-accent);
+}
+
+.consoleStand {
+  right: 13px;
+  bottom: 0;
+  width: 5px;
+  height: 17px;
+  background: #4e5559;
+  box-shadow: -6px 14px 0 2px #4e5559;
+}
+
+.restSlot {
+  position: absolute;
+  z-index: -1;
+  width: 30px;
+  height: 34px;
+  opacity: 0;
+}
+
+.restSlot[data-maintenance-rest-slot="bench-left"] { bottom: 13px; left: 13px; }
+.restSlot[data-maintenance-rest-slot="bench-right"] { bottom: 13px; left: 47px; }
+.restSlot[data-maintenance-rest-slot="crate-side"] { bottom: 9px; left: 126px; }
+.restSlot[data-maintenance-rest-slot="console-side"] { right: 38px; bottom: 9px; }
+
+@media (min-width: 40rem) {
+  .boundary { padding-inline: 2rem; }
+}
+
+@media (max-width: 39.999rem) {
+  .boundary { min-height: 76px; }
+
+  .bay {
+    width: 148px;
+    height: 68px;
+  }
+
+  .floor { width: 144px; }
+  .bench { left: 4px; }
+  .crate { left: 105px; }
+  .console,
+  .consoleSlot { display: none; }
+
+  .restSlot[data-maintenance-rest-slot="crate-side"] { left: 116px; }
+}

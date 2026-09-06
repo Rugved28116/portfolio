@@ -34,6 +34,14 @@
   transform: rotate(var(--part-angle));
 }
 
+[data-maintenance-active] [data-maintenance-damage][data-maintenance-repairing] {
+  transform: none;
+  opacity: 1;
+  transition:
+    transform 650ms cubic-bezier(0.2, 0.75, 0.25, 1),
+    opacity 650ms ease-out;
+}
+
 /* Small static offsets also make individual damage usable on touch screens. */
 @media (max-width: 639px), (pointer: coarse) {
   [data-maintenance-active] [data-maintenance-damage] { --part-angle: 0.6deg; --part-drop: 3px; }
@@ -46,5 +54,10 @@
   }
   [data-maintenance-active] [data-maintenance-character][data-maintenance-damage] {
     transform: translateY(2px) rotate(3deg);
+  }
+  [data-maintenance-active] [data-maintenance-damage][data-maintenance-repairing] {
+    transform: none;
+    opacity: 1;
+    transition: none;
   }
 }

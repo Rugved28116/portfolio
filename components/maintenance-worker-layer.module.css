@@ -9,6 +9,7 @@
 
 .worker {
   position: absolute;
+  z-index: 2;
   top: 0;
   left: 0;
   width: 30px;
@@ -18,8 +19,95 @@
   transition: transform var(--worker-duration) cubic-bezier(0.35, 0.02, 0.2, 1);
 }
 
+.ladder,
+.scaffold {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.ladder {
+  width: 16px;
+  height: var(--ladder-height);
+  transform: translate3d(var(--equipment-x), var(--equipment-y), 0);
+  transform-origin: center bottom;
+}
+
+.ladder::before,
+.ladder::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  content: "";
+  background: #72797d;
+}
+
+.ladder::before { left: 1px; }
+.ladder::after { right: 1px; }
+
+.ladderRungs {
+  position: absolute;
+  inset: 3px 2px;
+  background: repeating-linear-gradient(to bottom, #9da3a6 0 2px, transparent 2px 9px);
+}
+
+.ladderMarker {
+  position: absolute;
+  top: -2px;
+  right: -1px;
+  width: 4px;
+  height: 4px;
+  background: var(--rgb-accent);
+}
+
+.ladder[data-equipment-phase="deploying-ladder"] {
+  animation: rgb-ladder-deploy 300ms steps(4, end) both;
+}
+
+.ladder[data-equipment-phase="packing-ladder"] {
+  animation: rgb-ladder-deploy 220ms steps(4, end) reverse both;
+}
+
+.scaffold {
+  width: var(--scaffold-width);
+  height: 46px;
+  transform: translate3d(var(--equipment-x), var(--equipment-y), 0);
+}
+
+.scaffoldPlatform {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: #8c9499;
+  box-shadow: 0 2px 0 #252a2d;
+}
+
+.scaffoldFrame {
+  position: absolute;
+  inset: 4px 5px 0;
+  border-right: 2px solid #62686c;
+  border-left: 2px solid #62686c;
+  background:
+    linear-gradient(31deg, transparent 47%, #4e5559 48% 52%, transparent 53%),
+    linear-gradient(-31deg, transparent 47%, #4e5559 48% 52%, transparent 53%);
+}
+
+.scaffoldMarker {
+  position: absolute;
+  top: -3px;
+  left: 8px;
+  width: 14px;
+  height: 2px;
+  background: var(--rgb-accent);
+}
+
 .worker[data-worker-state="spawning"],
-.worker[data-worker-state="moving"] {
+.worker[data-worker-state="wandering"],
+.worker[data-worker-state="moving-to-rest"],
+.worker[data-worker-state="moving-to-job"] {
   will-change: transform;
 }
 
@@ -29,9 +117,7 @@
   transform-origin: center;
 }
 
-.facing[data-facing="left"] {
-  transform: scaleX(-1);
-}
+.facing[data-facing="left"] { transform: scaleX(-1); }
 
 .bot {
   display: block;
@@ -42,21 +128,62 @@
 .shell { fill: #17191b; stroke: #62686c; stroke-width: 1; }
 .panel { fill: #252a2d; }
 .visor { fill: var(--rgb-accent); }
-.antenna, .chest { fill: #8c9499; }
-.arm, .legLeft, .legRight { fill: #34393c; }
+.antenna,
+.chest { fill: #8c9499; }
+.arm,
+.legLeft,
+.legRight { fill: #34393c; }
 .tool { fill: #b5babd; }
-.spark { fill: var(--rgb-accent); opacity: 0; }
+.cargo { fill: #737b80; stroke: #b5babd; stroke-width: 1; opacity: 0; }
+.spark,
+.inspectBeam { fill: var(--rgb-accent); opacity: 0; }
 
-.worker[data-worker-state="moving"] .body {
+.worker[data-worker-carrying="true"] .cargo { opacity: 1; }
+
+.worker[data-worker-state="wandering"] .body,
+.worker[data-worker-state="moving-to-rest"] .body,
+.worker[data-worker-state="moving-to-job"] .body {
   animation: rgb-worker-walk 360ms steps(2, end) infinite;
 }
 
-.worker[data-worker-state="moving"] .legLeft {
+.worker[data-worker-state="wandering"] .legLeft,
+.worker[data-worker-state="moving-to-rest"] .legLeft,
+.worker[data-worker-state="moving-to-job"] .legLeft {
   animation: rgb-worker-step-left 360ms steps(2, end) infinite;
 }
 
-.worker[data-worker-state="moving"] .legRight {
+.worker[data-worker-state="wandering"] .legRight,
+.worker[data-worker-state="moving-to-rest"] .legRight,
+.worker[data-worker-state="moving-to-job"] .legRight {
   animation: rgb-worker-step-right 360ms steps(2, end) infinite;
+}
+
+.worker[data-worker-climbing="true"] .body {
+  animation-duration: 220ms;
+}
+
+.worker[data-worker-climbing="true"] .toolArm {
+  transform-origin: 24px 19px;
+  animation: rgb-worker-climb-arm 220ms steps(2, end) infinite;
+}
+
+.worker[data-worker-state="positioning"] .body {
+  transform: translateY(1px) rotate(-1deg);
+}
+
+.worker[data-worker-state="inspecting"] .visor,
+.worker[data-worker-state="inspecting-console"] .visor {
+  animation: rgb-worker-scan-visor 360ms steps(2, end) infinite;
+}
+
+.worker[data-worker-state="inspecting"] .antenna,
+.worker[data-worker-state="inspecting-console"] .antenna {
+  transform-origin: 15px 5px;
+  animation: rgb-worker-look 520ms steps(2, end) infinite;
+}
+
+.worker[data-worker-state="inspecting"] .inspectBeam {
+  animation: rgb-worker-inspect-beam 420ms steps(2, end) infinite;
 }
 
 .worker[data-worker-state="repairing"] .toolArm {
@@ -66,6 +193,37 @@
 
 .worker[data-worker-state="repairing"] .spark {
   animation: rgb-worker-spark 420ms steps(2, end) infinite;
+}
+
+.worker[data-worker-state="celebrating"] .body {
+  animation: rgb-worker-celebrate 360ms ease-out both;
+}
+
+.worker[data-worker-state="celebrating"] .visor {
+  animation: rgb-worker-visor-flash 180ms steps(2, end) 2;
+}
+
+.worker[data-worker-state="celebrating"] .toolArm {
+  transform-origin: 24px 19px;
+  transform: rotate(-34deg);
+}
+
+.worker[data-worker-state="resting"] .body {
+  transform-origin: center bottom;
+  transform: translateY(5px) scaleY(0.78);
+}
+
+.worker[data-worker-state="resting"] .antenna {
+  transform-origin: 15px 5px;
+  transform: rotate(18deg);
+}
+
+.worker[data-worker-state="resting"] .visor {
+  opacity: 0.42;
+}
+
+.worker[data-worker-state="inspecting-console"] .body {
+  transform: translateY(1px) rotate(1deg);
 }
 
 @keyframes rgb-worker-walk {
@@ -80,6 +238,23 @@
   50% { transform: translateX(-1px); }
 }
 
+@keyframes rgb-worker-climb-arm {
+  50% { transform: rotate(-24deg); }
+}
+
+@keyframes rgb-worker-scan-visor {
+  50% { opacity: 0.55; }
+}
+
+@keyframes rgb-worker-look {
+  50% { transform: translateX(1px) rotate(8deg); }
+}
+
+@keyframes rgb-worker-inspect-beam {
+  0%, 45% { opacity: 0; }
+  46%, 100% { opacity: 0.55; }
+}
+
 @keyframes rgb-worker-repair {
   50% { transform: rotate(-26deg); }
 }
@@ -89,20 +264,37 @@
   56%, 100% { opacity: 0.85; }
 }
 
+@keyframes rgb-worker-celebrate {
+  45% { transform: translateY(-4px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes rgb-worker-visor-flash {
+  50% { fill: #ecece7; }
+}
+
+@keyframes rgb-ladder-deploy {
+  from { scale: 1 0.05; }
+  to { scale: 1 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .worker {
-    transition-duration: 0ms !important;
-  }
+  .worker { transition-duration: 0ms !important; }
+
+  .ladder { animation: none !important; }
 
   .body,
   .legLeft,
   .legRight,
   .toolArm,
+  .visor,
+  .antenna,
+  .inspectBeam,
   .spark {
     animation: none !important;
   }
 
-  .worker[data-worker-state="repairing"] .spark {
-    opacity: 0.75;
-  }
+  .worker[data-worker-state="inspecting"] .inspectBeam { opacity: 0.45; }
+  .worker[data-worker-state="repairing"] .spark { opacity: 0.75; }
+  .worker[data-worker-state="celebrating"] .visor { fill: #ecece7; }
 }

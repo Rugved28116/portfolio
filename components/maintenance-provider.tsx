@@ -18,8 +18,10 @@ type BrokenElements = ReadonlyMap<string, DamageVariant>;
 type MaintenanceContextValue = {
   maintenanceMode: boolean;
   brokenElements: BrokenElements;
+  repairingElements: ReadonlySet<string>;
   toggleMaintenanceMode: () => void;
   breakElement: (id: string) => void;
+  beginRepair: (id: string) => void;
   repairElement: (id: string) => void;
   repairAll: () => void;
 };
@@ -46,24 +48,35 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
     pathname,
     maintenanceMode: false,
     brokenElements: new Map<string, DamageVariant>() as BrokenElements,
+    repairingElements: new Set<string>() as ReadonlySet<string>,
   }));
 
   // Reset route-local damage before rendering a new page. Mode itself persists.
   if (state.pathname !== pathname) {
-    setState({ ...state, pathname, brokenElements: new Map() });
+    setState({ ...state, pathname, brokenElements: new Map(), repairingElements: new Set() });
   }
 
   const toggleMaintenanceMode = useCallback(() => {
-    setState((current) => ({ ...current, maintenanceMode: !current.maintenanceMode, brokenElements: new Map() }));
+    setState((current) => ({ ...current, maintenanceMode: !current.maintenanceMode, brokenElements: new Map(), repairingElements: new Set() }));
   }, []);
   const repairAll = useCallback(() => {
-    setState((current) => ({ ...current, brokenElements: new Map() }));
+    setState((current) => ({ ...current, brokenElements: new Map(), repairingElements: new Set() }));
+  }, []);
+  const beginRepair = useCallback((id: string) => {
+    setState((current) => {
+      if (!current.brokenElements.has(id) || current.repairingElements.has(id)) return current;
+      const repairingElements = new Set(current.repairingElements);
+      repairingElements.add(id);
+      return { ...current, repairingElements };
+    });
   }, []);
   const repairElement = useCallback((id: string) => {
     setState((current) => {
       const brokenElements = new Map(current.brokenElements);
       brokenElements.delete(id);
-      return { ...current, brokenElements };
+      const repairingElements = new Set(current.repairingElements);
+      repairingElements.delete(id);
+      return { ...current, brokenElements, repairingElements };
     });
   }, []);
   const breakElement = useCallback((id: string) => {
@@ -75,7 +88,9 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
       if (!current.maintenanceMode || current.brokenElements.has(id)) return current;
       const brokenElements = new Map(current.brokenElements);
       brokenElements.set(id, variant);
-      return { ...current, brokenElements };
+      const repairingElements = new Set(current.repairingElements);
+      repairingElements.delete(id);
+      return { ...current, brokenElements, repairingElements };
     });
   }, []);
 
@@ -86,7 +101,10 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
     const painted = paintedParts.current;
     return () => {
       main?.removeAttribute("data-maintenance-active");
-      for (const element of painted) element.removeAttribute("data-maintenance-damage");
+      for (const element of painted) {
+        element.removeAttribute("data-maintenance-damage");
+        element.removeAttribute("data-maintenance-repairing");
+      }
       painted.clear();
     };
   }, [state.maintenanceMode, pathname]);
@@ -96,15 +114,19 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
     const elements = registeredElements();
     for (const element of elements) {
       const variant = state.brokenElements.get(element.dataset.maintenanceId!);
+      const isRepairing = state.repairingElements.has(element.dataset.maintenanceId!);
       if (variant) {
         if (element.dataset.maintenanceDamage !== variant) element.setAttribute("data-maintenance-damage", variant);
+        if (isRepairing) element.setAttribute("data-maintenance-repairing", "");
+        else element.removeAttribute("data-maintenance-repairing");
         paintedParts.current.add(element);
       } else {
         element.removeAttribute("data-maintenance-damage");
+        element.removeAttribute("data-maintenance-repairing");
         paintedParts.current.delete(element);
       }
     }
-  }, [state.maintenanceMode, state.brokenElements, pathname]);
+  }, [state.maintenanceMode, state.brokenElements, state.repairingElements, pathname]);
 
   useEffect(() => {
     if (!state.maintenanceMode) return;
@@ -127,11 +149,12 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
   }, [state.maintenanceMode, state.brokenElements, breakElement, repairElement]);
 
   return (
-    <MaintenanceContext.Provider value={{ ...state, toggleMaintenanceMode, breakElement, repairElement, repairAll }}>
+    <MaintenanceContext.Provider value={{ ...state, toggleMaintenanceMode, breakElement, beginRepair, repairElement, repairAll }}>
       {children}
       {state.maintenanceMode ? (
         <MaintenanceWorkerLayer
           brokenElementIds={[...state.brokenElements.keys()]}
+          beginRepair={beginRepair}
           repairElement={repairElement}
         />
       ) : null}

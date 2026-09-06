@@ -5,6 +5,7 @@ import { MaintenanceCharacters } from "@/components/maintenance-characters";
 import { BuildQueue } from "@/components/build-queue";
 import { Currently } from "@/components/currently";
 import { LabPreview } from "@/components/lab-preview";
+import { MaintenanceCrewBay } from "@/components/maintenance-crew-bay";
 import { NotesPreview } from "@/components/notes-preview";
 import { TerminalTrigger } from "@/components/portfolio-terminal";
 import { SelectedWork } from "@/components/selected-work";
@@ -84,6 +85,7 @@ export default function Home() {
       <BuildQueue />
       <AreasOfInterest />
       <NotesPreview />
+      <MaintenanceCrewBay />
     </>
   );
 }
