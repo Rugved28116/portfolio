@@ -96,8 +96,9 @@ export function BuildQueue() {
               const isCurrent = stage === entry.status;
 
               return (
-                <li {...maintenancePart(`queue-${entry.slug}-stage-${stage.toLowerCase()}`)}
+                <li
                   key={stage}
+                  {...maintenancePart(`queue-${entry.slug}-stage-${stage.toLowerCase()}`)}
                   aria-current={isCurrent ? "step" : undefined}
                   className="min-w-0 border-r border-b border-border p-3"
                 >

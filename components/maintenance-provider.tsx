@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { MaintenanceWorkerLayer } from "@/components/maintenance-worker-layer";
 import {
   createContext,
   useCallback,
@@ -128,6 +129,12 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
   return (
     <MaintenanceContext.Provider value={{ ...state, toggleMaintenanceMode, breakElement, repairElement, repairAll }}>
       {children}
+      {state.maintenanceMode ? (
+        <MaintenanceWorkerLayer
+          brokenElementIds={[...state.brokenElements.keys()]}
+          repairElement={repairElement}
+        />
+      ) : null}
     </MaintenanceContext.Provider>
   );
 }

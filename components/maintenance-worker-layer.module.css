@@ -1,0 +1,108 @@
+.layer {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+.worker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30px;
+  height: 34px;
+  pointer-events: none;
+  transform: translate3d(var(--worker-x), var(--worker-y), 0);
+  transition: transform var(--worker-duration) cubic-bezier(0.35, 0.02, 0.2, 1);
+}
+
+.worker[data-worker-state="spawning"],
+.worker[data-worker-state="moving"] {
+  will-change: transform;
+}
+
+.facing {
+  width: 100%;
+  height: 100%;
+  transform-origin: center;
+}
+
+.facing[data-facing="left"] {
+  transform: scaleX(-1);
+}
+
+.bot {
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 2px 1px rgb(0 0 0 / 45%));
+}
+
+.shell { fill: #17191b; stroke: #62686c; stroke-width: 1; }
+.panel { fill: #252a2d; }
+.visor { fill: var(--rgb-accent); }
+.antenna, .chest { fill: #8c9499; }
+.arm, .legLeft, .legRight { fill: #34393c; }
+.tool { fill: #b5babd; }
+.spark { fill: var(--rgb-accent); opacity: 0; }
+
+.worker[data-worker-state="moving"] .body {
+  animation: rgb-worker-walk 360ms steps(2, end) infinite;
+}
+
+.worker[data-worker-state="moving"] .legLeft {
+  animation: rgb-worker-step-left 360ms steps(2, end) infinite;
+}
+
+.worker[data-worker-state="moving"] .legRight {
+  animation: rgb-worker-step-right 360ms steps(2, end) infinite;
+}
+
+.worker[data-worker-state="repairing"] .toolArm {
+  transform-origin: 24px 19px;
+  animation: rgb-worker-repair 260ms steps(2, end) infinite;
+}
+
+.worker[data-worker-state="repairing"] .spark {
+  animation: rgb-worker-spark 420ms steps(2, end) infinite;
+}
+
+@keyframes rgb-worker-walk {
+  50% { transform: translateY(-1px) rotate(-1deg); }
+}
+
+@keyframes rgb-worker-step-left {
+  50% { transform: translateX(1px); }
+}
+
+@keyframes rgb-worker-step-right {
+  50% { transform: translateX(-1px); }
+}
+
+@keyframes rgb-worker-repair {
+  50% { transform: rotate(-26deg); }
+}
+
+@keyframes rgb-worker-spark {
+  0%, 55% { opacity: 0; }
+  56%, 100% { opacity: 0.85; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .worker {
+    transition-duration: 0ms !important;
+  }
+
+  .body,
+  .legLeft,
+  .legRight,
+  .toolArm,
+  .spark {
+    animation: none !important;
+  }
+
+  .worker[data-worker-state="repairing"] .spark {
+    opacity: 0.75;
+  }
+}
