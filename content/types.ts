@@ -184,15 +184,21 @@ export type AboutContent = {
   readonly interests: readonly AboutInterest[];
   readonly featuredReferences: readonly InterestReference[];
   readonly approach: readonly string[];
-  readonly contact: {
-    readonly githubUrl?: string;
-    readonly linkedinUrl?: string;
-    readonly email?: string;
-    readonly resumeUrl?: string;
-  };
+};
+
+export type SiteConfiguration = {
+  readonly siteName: string;
+  readonly title: string;
+  readonly description: string;
+  readonly siteUrl?: string;
+  readonly githubUrl?: string;
+  readonly linkedinUrl?: string;
+  readonly email?: string;
+  readonly resumeUrl?: string;
 };
 
 export type SiteContent = {
+  readonly site: SiteConfiguration;
   readonly identity: {
     readonly name: string;
     readonly onlineName: string;

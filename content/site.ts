@@ -1,6 +1,17 @@
 import type { SiteContent } from "@/content/types";
 
 export const siteContent = {
+  site: {
+    siteName: "RGB Official",
+    title: "Rugved Ganesh Bhor | RGB Official",
+    description:
+      "Portfolio of Rugved Ganesh Bhor, also known as RGB Official, featuring projects and experiments across cybersecurity, AI, systems, robotics, hardware and software.",
+    siteUrl: undefined,
+    githubUrl: undefined,
+    linkedinUrl: undefined,
+    email: undefined,
+    resumeUrl: undefined,
+  },
   identity: {
     name: "Rugved Ganesh Bhor",
     onlineName: "RGB Official",
@@ -101,16 +112,10 @@ export const siteContent = {
       "Document failures and fixes.",
       "Explore across security, AI, robotics and systems.",
     ],
-    contact: {
-      githubUrl: undefined,
-      linkedinUrl: undefined,
-      email: undefined,
-      resumeUrl: undefined,
-    },
   },
   terminal: {
     prompt: "rugved@rgb-official:~$",
   },
 } satisfies SiteContent;
 
-// TODO: Add confirmed contact and social links when they are provided.
+// TODO: Add the confirmed production URL, contact and social links when provided.

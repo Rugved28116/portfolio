@@ -28,7 +28,7 @@ type MaintenanceContextValue = {
 
 const MaintenanceContext = createContext<MaintenanceContextValue | null>(null);
 const selector = "[data-maintenance-breakable][data-maintenance-id]";
-const protectedSelector = "nav, footer, dialog, form, button, input, select, textarea, [role='button'], [role='dialog'], [contenteditable], [data-maintenance-protected]";
+const protectedSelector = "a[href], nav, footer, dialog, form, button, input, select, textarea, [role='button'], [role='dialog'], [contenteditable], [data-maintenance-protected]";
 
 function registeredElements() {
   return Array.from(document.querySelectorAll<HTMLElement>(`#main-content ${selector}`))
@@ -183,7 +183,7 @@ export function MaintenanceToggle({ mark }: { mark: string }) {
       </span>
       <span id="maintenance-instructions" className="sr-only">
         Optional visual mode. When enabled, click marked content to damage or repair it.
-        Keyboard links work normally. Disable to restore everything. Changing pages clears damage.
+        Links always navigate normally. Disable to restore everything. Changing pages clears damage.
       </span>
     </div>
   );

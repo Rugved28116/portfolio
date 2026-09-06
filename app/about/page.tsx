@@ -47,15 +47,15 @@ export default function AboutPage() {
     .map((reference) => resolveFeaturedReference(reference))
     .filter((item) => item !== undefined);
   const contactLinks = [
-    { label: "GitHub", href: siteContent.about.contact.githubUrl },
-    { label: "LinkedIn", href: siteContent.about.contact.linkedinUrl },
+    { label: "GitHub", href: siteContent.site.githubUrl },
+    { label: "LinkedIn", href: siteContent.site.linkedinUrl },
     {
       label: "Email",
-      href: siteContent.about.contact.email
-        ? `mailto:${siteContent.about.contact.email}`
+      href: siteContent.site.email
+        ? `mailto:${siteContent.site.email}`
         : undefined,
     },
-    { label: "Resume", href: siteContent.about.contact.resumeUrl },
+    { label: "Resume", href: siteContent.site.resumeUrl },
   ].filter(
     (item): item is { label: string; href: string } =>
       item.href !== undefined,

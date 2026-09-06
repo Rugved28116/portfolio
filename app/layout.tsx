@@ -25,12 +25,53 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  ...(siteContent.site.siteUrl
+    ? { metadataBase: new URL(siteContent.site.siteUrl) }
+    : {}),
   title: {
-    default: `${siteContent.identity.name} | ${siteContent.identity.onlineName}`,
-    template: `%s | ${siteContent.identity.onlineName}`,
+    default: siteContent.site.title,
+    template: `%s | ${siteContent.identity.name}`,
   },
-  description: siteContent.hero.description,
-  // TODO: Add metadataBase and social metadata after public URLs are confirmed.
+  description: siteContent.site.description,
+  applicationName: siteContent.site.siteName,
+  authors: [{ name: siteContent.identity.name }],
+  creator: siteContent.identity.name,
+  keywords: [
+    siteContent.identity.name,
+    siteContent.identity.onlineName,
+    "Cybersecurity",
+    "Artificial Intelligence",
+    "Systems",
+    "Robotics",
+    "Hardware",
+    "Software",
+    "Networking",
+    "Linux",
+  ],
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  openGraph: {
+    title: siteContent.site.title,
+    description: siteContent.site.description,
+    siteName: siteContent.site.siteName,
+    locale: "en_US",
+    type: "website",
+    ...(siteContent.site.siteUrl ? { url: siteContent.site.siteUrl } : {}),
+  },
+  twitter: {
+    card: "summary",
+    title: siteContent.site.title,
+    description: siteContent.site.description,
+  },
 };
 
 const terminalData: TerminalData = {
@@ -49,21 +90,21 @@ const terminalData: TerminalData = {
   contact: {
     github: {
       label: "GitHub",
-      url: siteContent.about.contact.githubUrl,
+      url: siteContent.site.githubUrl,
     },
     linkedin: {
       label: "LinkedIn",
-      url: siteContent.about.contact.linkedinUrl,
+      url: siteContent.site.linkedinUrl,
     },
     email: {
       label: "Email",
-      url: siteContent.about.contact.email
-        ? `mailto:${siteContent.about.contact.email}`
+      url: siteContent.site.email
+        ? `mailto:${siteContent.site.email}`
         : undefined,
     },
     resume: {
       label: "Resume",
-      url: siteContent.about.contact.resumeUrl,
+      url: siteContent.site.resumeUrl,
     },
   },
 };
