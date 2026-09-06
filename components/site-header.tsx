@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { MaintenanceToggle } from "@/components/maintenance-provider";
 import { TerminalTrigger } from "@/components/portfolio-terminal";
 import { siteContent } from "@/content/site";
 
@@ -7,18 +8,17 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background">
       <div className="mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto] items-center gap-x-4 px-5 py-2 sm:px-8 md:flex md:min-h-16 md:flex-nowrap md:py-0">
-        <Link
-          href="/"
-          aria-label={`${siteContent.identity.onlineName} home`}
-          className="flex min-h-11 items-center font-mono text-sm font-semibold tracking-[0.08em] text-foreground hover:text-accent"
-        >
-          {siteContent.identity.mark}
-        </Link>
+        <MaintenanceToggle mark={siteContent.identity.mark} />
         <nav
           aria-label="Primary navigation"
           className="col-span-2 row-start-2 border-t border-border md:ml-auto md:border-0"
         >
           <ul className="flex items-center justify-between font-mono text-xs uppercase tracking-[0.14em] text-muted md:justify-start md:gap-2">
+            <li>
+              <Link href="/" className="flex min-h-11 items-center px-2 hover:text-foreground md:px-3">
+                Home
+              </Link>
+            </li>
             {siteContent.navigation.map((item) => (
               <li key={item.href}>
                 <Link

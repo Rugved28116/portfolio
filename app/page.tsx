@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AreasOfInterest } from "@/components/areas-of-interest";
+import { MaintenanceCharacters } from "@/components/maintenance-characters";
 import { BuildQueue } from "@/components/build-queue";
 import { Currently } from "@/components/currently";
 import { LabPreview } from "@/components/lab-preview";
@@ -41,7 +42,7 @@ export default function Home() {
               id="hero-title"
               className="max-w-5xl text-balance text-[clamp(3.25rem,10.8vw,8.25rem)] font-semibold uppercase leading-[0.88] tracking-[-0.065em] text-foreground"
             >
-              {siteContent.hero.statement}
+              <MaintenanceCharacters id="hero-title" text={siteContent.hero.statement.toUpperCase()} />
             </h1>
           </div>
 

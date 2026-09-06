@@ -17,7 +17,7 @@ export default function WorkPage() {
     >
       <ul className="grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">
         {projects.map((project) => (
-          <li key={project.slug} className="bg-surface p-5 text-sm">
+          <li key={project.slug} id={project.slug} className="bg-surface p-5 text-sm">
             {project.title}
           </li>
         ))}

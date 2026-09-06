@@ -36,6 +36,7 @@ export function NotesPreview() {
         </header>
 
         <NoteList
+          maintenanceBreakable
           notes={notes}
           titleLevel={3}
           emptyDescription="The notebook is ready for confirmed technical write-ups, build logs and project retrospectives."

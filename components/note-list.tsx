@@ -1,3 +1,4 @@
+import { maintenancePart } from "@/lib/maintenance-parts";
 import Link from "next/link";
 
 import type { PublishedNote } from "@/content/types";
@@ -6,6 +7,7 @@ type NoteListProps = {
   notes: readonly PublishedNote[];
   titleLevel: 2 | 3;
   emptyDescription: string;
+  maintenanceBreakable?: boolean;
 };
 
 const noteDateFormatter = new Intl.DateTimeFormat("en", {
@@ -23,6 +25,7 @@ export function NoteList({
   notes,
   titleLevel,
   emptyDescription,
+  maintenanceBreakable = false,
 }: NoteListProps) {
   if (notes.length === 0) {
     return (
@@ -53,7 +56,7 @@ export function NoteList({
               href={`/notes/${note.slug}`}
               className="group grid min-w-0 gap-5 py-6 focus-visible:bg-surface focus-visible:outline-offset-2 sm:grid-cols-[3rem_minmax(0,1fr)] sm:gap-5"
             >
-              <span
+              <span {...maintenancePart(`note-${note.slug}-number`, maintenanceBreakable)}
                 aria-hidden="true"
                 className="font-mono text-[0.6875rem] tabular-nums text-muted sm:pt-1"
               >
@@ -61,7 +64,7 @@ export function NoteList({
               </span>
 
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-[0.625rem] uppercase tracking-[0.12em] text-muted">
+                <div {...maintenancePart(`note-${note.slug}-metadata`, maintenanceBreakable)} className="flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-[0.625rem] uppercase tracking-[0.12em] text-muted">
                   <span>{note.type}</span>
                   {note.date !== undefined ? (
                     <>
@@ -77,10 +80,10 @@ export function NoteList({
                   ) : null}
                 </div>
 
-                <Heading className="mt-3 break-words text-xl font-semibold tracking-[-0.025em] text-foreground group-hover:text-accent group-focus-visible:text-accent sm:text-2xl">
+                <Heading {...maintenancePart(`note-${note.slug}-title`, maintenanceBreakable)} className="mt-3 break-words text-xl font-semibold tracking-[-0.025em] text-foreground group-hover:text-accent group-focus-visible:text-accent sm:text-2xl">
                   {note.title}
                 </Heading>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
+                <p {...maintenancePart(`note-${note.slug}-description`, maintenanceBreakable)} className="mt-3 max-w-2xl text-sm leading-6 text-muted">
                   {note.description}
                 </p>
 

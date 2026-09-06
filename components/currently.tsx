@@ -1,3 +1,4 @@
+import { maintenancePart } from "@/lib/maintenance-parts";
 import { siteContent } from "@/content/site";
 
 export function Currently() {
@@ -43,7 +44,7 @@ export function Currently() {
                     {item.label}
                   </dt>
                   <dd className="min-w-0 text-sm leading-5 text-foreground lg:mt-3">
-                    <span>{item.value}</span>
+                    <span className="inline-block" {...maintenancePart(`currently-${item.label.toLowerCase()}-value`)}>{item.value}</span>
                     {item.note ? (
                       <span className="mt-2 block font-mono text-[0.625rem] uppercase tracking-[0.14em] text-accent">
                         {item.note}

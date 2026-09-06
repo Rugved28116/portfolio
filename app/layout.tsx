@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { MaintenanceProvider } from "@/components/maintenance-provider";
 
 import {
   TerminalProvider,
@@ -11,6 +12,7 @@ import { siteContent } from "@/content/site";
 import { getLabEntries, getProjects, getPublishedNotes } from "@/lib/content";
 
 import "./globals.css";
+import "@/components/maintenance.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,19 +40,12 @@ const terminalData: TerminalData = {
     alias: siteContent.identity.onlineName,
     positioning: siteContent.about.positioning,
   },
-  currently: siteContent.currently.map(({ label, value }) => ({
-    label,
-    value,
-  })),
+  currently: siteContent.currently,
   interests: siteContent.about.interests,
-  projects: getProjects().map(({ slug, title }) => ({ slug, title })),
-  labEntries: getLabEntries().map(({ id, slug, title, status }) => ({
-    id,
-    slug,
-    title,
-    status,
-  })),
-  notes: getPublishedNotes().map(({ slug, title }) => ({ slug, title })),
+  interestAreas: siteContent.interests,
+  projects: getProjects(),
+  labEntries: getLabEntries(),
+  notes: getPublishedNotes(),
   contact: {
     github: {
       label: "GitHub",
@@ -80,6 +75,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
+        <MaintenanceProvider>
         <TerminalProvider data={terminalData}>
           <a
             href="#main-content"
@@ -93,6 +89,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </main>
           <SiteFooter />
         </TerminalProvider>
+        </MaintenanceProvider>
       </body>
     </html>
   );

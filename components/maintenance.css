@@ -1,0 +1,50 @@
+/* No container overlays or color replacement: only opted-in parts move. */
+[data-maintenance-active] [data-maintenance-breakable] { cursor: crosshair; }
+
+[data-maintenance-active] [data-maintenance-damage] {
+  --part-angle: 2deg;
+  --part-drop: 5px;
+  transform-origin: center;
+  transition: transform 160ms ease-out;
+}
+[data-maintenance-active] [data-maintenance-character][data-maintenance-damage] {
+  display: inline-block;
+  --part-angle: 12deg;
+  --part-drop: 0.14em;
+}
+[data-maintenance-active] [data-maintenance-damage="fall"] {
+  transform: translateY(var(--part-drop)) rotate(var(--part-angle));
+}
+[data-maintenance-active] [data-maintenance-damage="hang"] {
+  transform-origin: 20% 0;
+  transform: rotate(calc(var(--part-angle) * -1));
+}
+[data-maintenance-active] [data-maintenance-damage="shift"] {
+  transform: translate(3px, -3px) rotate(calc(var(--part-angle) * -0.5));
+}
+[data-maintenance-active] [data-maintenance-damage="fade"] {
+  transform: translateY(2px) rotate(var(--part-angle));
+  opacity: 0.85;
+}
+[data-maintenance-active] [data-maintenance-damage="collapse"] {
+  transform-origin: bottom;
+  transform: translateY(var(--part-drop)) scaleY(0.86) rotate(calc(var(--part-angle) * -0.5));
+}
+[data-maintenance-active] [data-maintenance-damage="tilt"] {
+  transform: rotate(var(--part-angle));
+}
+
+/* Small static offsets also make individual damage usable on touch screens. */
+@media (max-width: 639px), (pointer: coarse) {
+  [data-maintenance-active] [data-maintenance-damage] { --part-angle: 0.6deg; --part-drop: 3px; }
+  [data-maintenance-active] [data-maintenance-character][data-maintenance-damage] { --part-angle: 7deg; --part-drop: 0.1em; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-maintenance-active] [data-maintenance-damage] {
+    transition: none;
+    transform: translateY(2px) rotate(0.5deg);
+  }
+  [data-maintenance-active] [data-maintenance-character][data-maintenance-damage] {
+    transform: translateY(2px) rotate(3deg);
+  }
+}

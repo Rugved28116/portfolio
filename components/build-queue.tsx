@@ -1,3 +1,4 @@
+import { maintenancePart } from "@/lib/maintenance-parts";
 import { getLabEntryById } from "@/lib/content";
 
 const buildLifecycle = [
@@ -54,13 +55,13 @@ export function BuildQueue() {
           </div>
 
           <div className="min-w-0 border-b border-border py-6 lg:border-r lg:border-b-0 lg:px-8">
-            <h3
+            <h3 {...maintenancePart(`queue-${entry.slug}-title`)}
               id="build-queue-entry-title"
               className="break-words text-2xl font-semibold uppercase tracking-[-0.035em] text-foreground sm:text-3xl"
             >
               {entry.title}
             </h3>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-muted">
+            <p {...maintenancePart(`queue-${entry.slug}-description`)} className="mt-4 max-w-2xl text-sm leading-6 text-muted">
               {entry.shortDescription}
             </p>
             <p className="mt-5 break-words font-mono text-xs uppercase leading-5 tracking-[0.1em] text-muted">
@@ -73,7 +74,7 @@ export function BuildQueue() {
               Current state
             </p>
             {entry.status ? (
-              <p className="w-fit border border-accent px-3 py-2 font-mono text-sm font-semibold uppercase tracking-[0.16em] text-foreground">
+              <p {...maintenancePart(`queue-${entry.slug}-status`)} className="w-fit border border-accent px-3 py-2 font-mono text-sm font-semibold uppercase tracking-[0.16em] text-foreground">
                 {entry.status}
               </p>
             ) : null}
@@ -95,7 +96,7 @@ export function BuildQueue() {
               const isCurrent = stage === entry.status;
 
               return (
-                <li
+                <li {...maintenancePart(`queue-${entry.slug}-stage-${stage.toLowerCase()}`)}
                   key={stage}
                   aria-current={isCurrent ? "step" : undefined}
                   className="min-w-0 border-r border-b border-border p-3"

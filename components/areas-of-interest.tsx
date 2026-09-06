@@ -1,3 +1,4 @@
+import { maintenancePart } from "@/lib/maintenance-parts";
 import Link from "next/link";
 
 import { siteContent } from "@/content/site";
@@ -57,7 +58,7 @@ export function AreasOfInterest() {
               key={area.label}
               className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)] gap-3 border-r border-b border-border p-5 sm:p-6"
             >
-              <span
+              <span {...maintenancePart(`interest-${area.label.toLowerCase()}-number`)}
                 aria-hidden="true"
                 className="pt-0.5 font-mono text-[0.625rem] tabular-nums text-muted"
               >
@@ -65,10 +66,10 @@ export function AreasOfInterest() {
               </span>
 
               <div className="flex min-w-0 flex-col">
-                <h3 className="break-words font-mono text-sm font-semibold uppercase tracking-[0.1em] text-foreground">
+                <h3 {...maintenancePart(`interest-${area.label.toLowerCase()}-title`)} className="break-words font-mono text-sm font-semibold uppercase tracking-[0.1em] text-foreground">
                   {area.label}
                 </h3>
-                <p className="mt-3 text-sm leading-6 text-muted">
+                <p {...maintenancePart(`interest-${area.label.toLowerCase()}-description`)} className="mt-3 text-sm leading-6 text-muted">
                   {area.description}
                 </p>
 

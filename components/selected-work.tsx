@@ -1,3 +1,4 @@
+import { maintenancePart } from "@/lib/maintenance-parts";
 import Link from "next/link";
 
 import { getFeaturedProjects } from "@/lib/content";
@@ -18,6 +19,8 @@ export function SelectedWork() {
             </p>
             <h2
               id="selected-work-title"
+              data-maintenance-breakable
+              data-maintenance-id="selected-work-title"
               className="mt-3 text-3xl font-semibold uppercase tracking-[-0.035em] text-foreground sm:text-4xl"
             >
               Selected work
@@ -52,7 +55,7 @@ export function SelectedWork() {
                   href={`/work/${project.slug}`}
                   className="group grid min-w-0 grid-cols-[2rem_minmax(0,1fr)] gap-x-4 gap-y-6 px-2 py-7 hover:bg-surface focus-visible:bg-surface focus-visible:outline-offset-[-2px] sm:grid-cols-[3rem_minmax(0,1fr)] sm:px-3 sm:py-9 lg:grid-cols-[3rem_minmax(0,1fr)_minmax(16rem,20rem)] lg:gap-x-8"
                 >
-                  <span
+                  <span {...maintenancePart(`project-${project.slug}-index`)}
                     aria-hidden="true"
                     className="pt-1 font-mono text-xs tabular-nums text-muted"
                   >
@@ -60,11 +63,11 @@ export function SelectedWork() {
                   </span>
 
                   <div className="min-w-0">
-                    <h3 className="text-balance text-2xl font-medium leading-tight tracking-[-0.025em] text-foreground transition-colors duration-150 group-hover:text-accent group-focus-visible:text-accent motion-reduce:transition-none sm:text-3xl">
+                    <h3 {...maintenancePart(`project-${project.slug}-title`)} className="text-balance text-2xl font-medium leading-tight tracking-[-0.025em] text-foreground transition-colors duration-150 group-hover:text-accent group-focus-visible:text-accent motion-reduce:transition-none sm:text-3xl">
                       {project.title}
                     </h3>
                     {project.shortDescription ? (
-                      <p className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base sm:leading-7">
+                      <p {...maintenancePart(`project-${project.slug}-description`)} className="mt-4 max-w-2xl text-sm leading-6 text-muted sm:text-base sm:leading-7">
                         {project.shortDescription}
                       </p>
                     ) : null}
@@ -73,7 +76,7 @@ export function SelectedWork() {
                   {hasCategories || hasTechnologies || hasRecord ? (
                     <dl className="col-start-2 grid min-w-0 gap-4 lg:col-start-3 lg:row-start-1">
                       {hasCategories ? (
-                        <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 lg:block">
+                        <div {...maintenancePart(`project-${project.slug}-categories`)} className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 lg:block">
                           <dt className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-muted">
                             Categories
                           </dt>
@@ -84,7 +87,7 @@ export function SelectedWork() {
                       ) : null}
 
                       {hasTechnologies ? (
-                        <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 lg:block">
+                        <div {...maintenancePart(`project-${project.slug}-technologies`)} className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 lg:block">
                           <dt className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-muted">
                             Technologies
                           </dt>

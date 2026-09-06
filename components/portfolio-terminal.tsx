@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createFilesystem, displayPath, type TerminalData } from "@/lib/terminal-filesystem";
+import { completeInput, runCommand, VIRTUAL_HOME, type TerminalLine } from "@/lib/terminal-shell";
+export type { TerminalData } from "@/lib/terminal-filesystem";
 import {
   createContext,
   useContext,
   useEffect,
   useRef,
+  useMemo,
   useState,
   type FormEvent,
   type KeyboardEvent,
@@ -14,55 +19,10 @@ import {
 
 import styles from "./portfolio-terminal.module.css";
 
-type TerminalLink = {
-  readonly label: string;
-  readonly url?: string;
-};
-
-export type TerminalData = {
-  readonly prompt: string;
-  readonly identity: {
-    readonly name: string;
-    readonly alias: string;
-    readonly positioning: string;
-  };
-  readonly currently: readonly {
-    readonly label: string;
-    readonly value: string;
-  }[];
-  readonly interests: readonly string[];
-  readonly projects: readonly {
-    readonly slug: string;
-    readonly title: string;
-    readonly href?: string;
-  }[];
-  readonly labEntries: readonly {
-    readonly id: string;
-    readonly slug: string;
-    readonly title: string;
-    readonly status?: string;
-  }[];
-  readonly notes: readonly {
-    readonly slug: string;
-    readonly title: string;
-  }[];
-  readonly contact: {
-    readonly github: TerminalLink;
-    readonly linkedin: TerminalLink;
-    readonly email: TerminalLink;
-    readonly resume: TerminalLink;
-  };
-};
-
-type TerminalLine = {
-  readonly text: string;
-  readonly href?: string;
-  readonly tone?: "default" | "muted" | "accent" | "error";
-};
-
 type TerminalEntry = {
   readonly id: number;
   readonly command: string;
+  readonly cwd: string;
   readonly lines: readonly TerminalLine[];
 };
 
@@ -82,23 +42,6 @@ type TerminalTriggerProps = {
   readonly title?: string;
 };
 
-const commandDefinitions = [
-  ["help", "Show available portfolio commands."],
-  ["whoami", "Show identity and positioning."],
-  ["projects", "List major projects."],
-  ["lab", "List Lab experiments and plans."],
-  ["skills", "List areas of interest."],
-  ["notes", "List published technical notes."],
-  ["contact", "Show configured contact methods."],
-  ["github", "Open the configured GitHub profile."],
-  ["linkedin", "Open the configured LinkedIn profile."],
-  ["resume", "Open the configured resume."],
-  ["neofetch", "Show portfolio system information."],
-  ["clear", "Clear terminal output."],
-  ["exit", "Close the terminal."],
-] as const;
-
-const commandNames = commandDefinitions.map(([name]) => name);
 const systemMark = [
   " RRRR   GGGG  BBBB",
   " R   R G      B   B",
@@ -118,10 +61,6 @@ function useTerminalContext() {
   return context;
 }
 
-function findCurrentValue(data: TerminalData, label: string) {
-  return data.currently.find((item) => item.label === label)?.value;
-}
-
 function lineToneClass(tone: TerminalLine["tone"]) {
   if (tone === "muted") return "text-muted";
   if (tone === "accent") return "text-accent";
@@ -131,6 +70,10 @@ function lineToneClass(tone: TerminalLine["tone"]) {
 }
 
 export function TerminalProvider({ children, data }: TerminalProviderProps) {
+  const router = useRouter();
+  const nodes = useMemo(() => createFilesystem(data), [data]);
+  const [cwd, setCwd] = useState(VIRTUAL_HOME);
+  const startedAtRef = useRef<number | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [entries, setEntries] = useState<readonly TerminalEntry[]>([]);
@@ -171,6 +114,7 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
 
   function openTerminal(opener: HTMLButtonElement) {
     openerRef.current = opener;
+    startedAtRef.current ??= Date.now();
     setHistoryIndex(null);
     setIsOpen(true);
   }
@@ -220,137 +164,39 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
     };
   }, [isOpen]);
 
-  function openConfiguredLink(link: TerminalLink, successMessage: string) {
-    if (!link.url) return undefined;
-
-    window.open(link.url, "_blank", "noopener,noreferrer");
-    return [{ text: successMessage, href: link.url, tone: "accent" }] satisfies
-      readonly TerminalLine[];
-  }
-
-  function getCommandOutput(command: string): readonly TerminalLine[] {
-    switch (command.toLowerCase()) {
-      case "help":
-        return [
-          { text: "Available commands" },
-          { text: "" },
-          ...commandDefinitions.map(([name, description]) => ({
-            text: `  ${name.padEnd(10)} ${description}`,
-          })),
-        ];
-      case "whoami":
-        return [
-          { text: data.identity.name.toUpperCase(), tone: "accent" },
-          { text: `aka ${data.identity.alias}` },
-          { text: "" },
-          { text: data.identity.positioning },
-        ];
-      case "projects":
-        return data.projects.map((project, index) => ({
-          text: `${String(index + 1).padStart(2, "0")}  ${project.title}`,
-          href: project.href,
-        }));
-      case "lab":
-        return data.labEntries.map((entry) => ({
-          text: `${entry.id} / ${entry.title}${entry.status ? ` / ${entry.status}` : ""}`,
-          href: `/lab#${entry.slug}`,
-          tone: entry.status === "PLANNED" ? "accent" : "default",
-        }));
-      case "skills":
-        return data.interests.map((interest, index) => ({
-          text: `${String(index + 1).padStart(2, "0")} / ${interest}`,
-        }));
-      case "notes":
-        return data.notes.length > 0
-          ? data.notes.map((note, index) => ({
-              text: `${String(index + 1).padStart(2, "0")} / ${note.title}`,
-              href: `/notes/${note.slug}`,
-            }))
-          : [{ text: "No published notes.", tone: "muted" }];
-      case "contact": {
-        const configuredLinks = Object.values(data.contact).filter(
-          (link): link is TerminalLink & { url: string } =>
-            link.url !== undefined,
-        );
-
-        return configuredLinks.length > 0
-          ? configuredLinks.map((link) => ({
-              text: `${link.label} / ${link.url}`,
-              href: link.url,
-            }))
-          : [{ text: "No contact methods configured.", tone: "muted" }];
-      }
-      case "github":
-        return (
-          openConfiguredLink(data.contact.github, "Opening GitHub.") ?? [
-            { text: "GitHub link not configured.", tone: "muted" },
-          ]
-        );
-      case "linkedin":
-        return (
-          openConfiguredLink(data.contact.linkedin, "Opening LinkedIn.") ?? [
-            { text: "LinkedIn link not configured.", tone: "muted" },
-          ]
-        );
-      case "resume":
-        return (
-          openConfiguredLink(data.contact.resume, "Opening resume.") ?? [
-            { text: "Resume not configured.", tone: "muted" },
-          ]
-        );
-      case "neofetch": {
-        const focus = findCurrentValue(data, "FOCUS");
-        const building = findCurrentValue(data, "BUILDING");
-        const planning = findCurrentValue(data, "PLANNING");
-        const platform = findCurrentValue(data, "PLATFORM");
-
-        return [
-          { text: "OS        RGB Portfolio" },
-          { text: `User      ${data.identity.name}` },
-          { text: `Alias     ${data.identity.alias}` },
-          ...(focus ? [{ text: `Focus     ${focus}` }] : []),
-          ...(building ? [{ text: `Building  ${building}` }] : []),
-          ...(planning ? [{ text: `Planning  ${planning}` }] : []),
-          ...(platform ? [{ text: `Platform  ${platform}` }] : []),
-          { text: `Interests ${data.interests.slice(0, 6).join(" / ")}` },
-        ];
-      }
-      default:
-        return [
-          { text: `command not found: ${command}`, tone: "error" },
-          { text: "type 'help' for available commands", tone: "muted" },
-        ];
-    }
-  }
-
   function executeInput(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const rawCommand = input.trim();
-
     if (!rawCommand) return;
-
-    const command = rawCommand.toLowerCase();
+    const history = [...commandHistory, rawCommand];
+    const result = runCommand(rawCommand, {
+      data, nodes, cwd, history, now: new Date(),
+      startedAt: startedAtRef.current ?? Date.now(),
+    });
     setInput("");
     setHistoryIndex(null);
-    setCommandHistory((history) => [...history, rawCommand]);
-
-    if (command === "clear") {
+    setCommandHistory(history);
+    if (result.cwd) setCwd(result.cwd);
+    if (result.action === "clear") {
       setEntries([]);
       return;
     }
-
-    if (command === "exit") {
+    if (result.action === "exit") {
       closeTerminal();
       return;
     }
-
-    const nextEntry: TerminalEntry = {
-      id: entryIdRef.current,
-      command: rawCommand,
-      lines: getCommandOutput(rawCommand),
+    const entry: TerminalEntry = {
+      id: entryIdRef.current++, command: rawCommand, cwd, lines: result.lines,
     };
-    entryIdRef.current += 1;
-    setEntries((history) => [...history, nextEntry]);
+    setEntries((entries) => [...entries, entry]);
+    if (result.destination) {
+      if (result.destination.startsWith("/")) {
+        router.push(result.destination);
+        closeTerminal();
+      } else {
+        window.open(result.destination, "_blank", "noopener,noreferrer");
+      }
+    }
   }
 
   function handleInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -385,12 +231,11 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
     }
 
     if (event.key === "Tab" && !event.shiftKey) {
-      const inputPrefix = input.trim().toLowerCase();
-      const matches = commandNames.filter((name) => name.startsWith(inputPrefix));
-
-      if (inputPrefix && matches.length === 1 && matches[0] !== inputPrefix) {
+      if (event.currentTarget.selectionStart !== input.length) return;
+      const completed = completeInput(input, cwd, nodes);
+      if (completed !== input) {
         event.preventDefault();
-        setInput(matches[0]);
+        setInput(completed);
       }
     }
   }
@@ -430,7 +275,7 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
         <div className={styles.session}>
           <header className={styles.titleBar}>
             <h2 id="portfolio-terminal-title" className={styles.title}>
-              {shellUser}: ~
+              {shellUser}: {displayPath(cwd)}
             </h2>
             <button
               type="button"
@@ -453,21 +298,21 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
           >
             <p id="portfolio-terminal-description" className="sr-only">
               Simulated portfolio terminal. Type help for commands. Use Up and
-              Down for history, Tab to complete a command, and Escape to close.
+              Down for history, Tab to complete commands and paths, Shift+Tab to move focus, and Escape to close.
             </p>
 
             <div role="log" aria-label="Terminal scrollback" aria-live="polite" aria-relevant="additions">
               {entries.map((entry) => (
                 <div key={entry.id} className={styles.entry}>
                   <p className={styles.location}>
-                    {shellUser} <span className={styles.path}>~</span>
+                    {shellUser}:<span className={styles.path}>{displayPath(entry.cwd)}</span>$
                   </p>
                   <p className={styles.command}>
                     <span className={styles.symbol}>❯</span>{" "}
                     <span className="text-foreground">{entry.command}</span>
                   </p>
-                  <div className={entry.command.toLowerCase() === "neofetch" ? styles.systemInfo : styles.output}>
-                    {entry.command.toLowerCase() === "neofetch" ? (
+                  <div className={["neofetch", "fastfetch"].includes(entry.command.toLowerCase()) ? styles.systemInfo : styles.output}>
+                    {["neofetch", "fastfetch"].includes(entry.command.toLowerCase()) ? (
                       <pre aria-hidden="true" className={styles.systemMark}>{systemMark}</pre>
                     ) : null}
                     <div>
@@ -512,7 +357,7 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
             </div>
             <form onSubmit={executeInput} className={styles.prompt}>
               <p aria-hidden="true" className={styles.location}>
-                {shellUser} <span className={styles.path}>~</span>
+                {shellUser}:<span className={styles.path}>{displayPath(cwd)}</span>$
               </p>
               <label htmlFor="portfolio-terminal-input" className="sr-only">
                 Terminal command
