@@ -162,10 +162,15 @@
 }
 
 .worker[data-worker-state="spawning"],
+.worker[data-worker-state="exiting"],
 .worker[data-worker-state="wandering"],
 .worker[data-worker-state="moving-to-rest"],
 .worker[data-worker-state="moving-to-job"] {
   will-change: transform;
+}
+
+.worker[data-worker-state="spawning"] {
+  animation: rgb-worker-spawn 380ms ease-out var(--worker-spawn-delay) both;
 }
 
 .facing {
@@ -198,18 +203,21 @@
 .worker[data-worker-carrying="true"] .cargo { opacity: 1; }
 
 .worker[data-worker-state="wandering"] .body,
+.worker[data-worker-state="exiting"] .body,
 .worker[data-worker-state="moving-to-rest"] .body,
 .worker[data-worker-state="moving-to-job"] .body {
   animation: rgb-worker-walk 360ms steps(2, end) infinite;
 }
 
 .worker[data-worker-state="wandering"] .legLeft,
+.worker[data-worker-state="exiting"] .legLeft,
 .worker[data-worker-state="moving-to-rest"] .legLeft,
 .worker[data-worker-state="moving-to-job"] .legLeft {
   animation: rgb-worker-step-left 360ms steps(2, end) infinite;
 }
 
 .worker[data-worker-state="wandering"] .legRight,
+.worker[data-worker-state="exiting"] .legRight,
 .worker[data-worker-state="moving-to-rest"] .legRight,
 .worker[data-worker-state="moving-to-job"] .legRight {
   animation: rgb-worker-step-right 360ms steps(2, end) infinite;
@@ -287,6 +295,18 @@
   50% { transform: translateY(-1px) rotate(-1deg); }
 }
 
+@keyframes rgb-worker-spawn {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
 @keyframes rgb-worker-step-left {
   50% { transform: translateX(1px); }
 }
@@ -350,7 +370,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .worker { transition-duration: 0ms !important; }
+  .worker {
+    transition-duration: 0ms !important;
+  }
+
+  .worker[data-worker-state="spawning"] {
+    animation: none;
+  }
 
   .ladder { animation: none !important; }
 

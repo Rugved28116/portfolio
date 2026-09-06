@@ -5,9 +5,9 @@ import { useMaintenance } from "@/components/maintenance-provider";
 import styles from "./maintenance-crew-bay.module.css";
 
 export function MaintenanceCrewBay() {
-  const { maintenanceMode } = useMaintenance();
+  const { maintenanceCrewVisible } = useMaintenance();
 
-  if (!maintenanceMode) return null;
+  if (!maintenanceCrewVisible) return null;
 
   return (
     <aside

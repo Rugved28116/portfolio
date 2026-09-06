@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 export const discoveryKeys = {
   maintenance: "rgb-discovery-maintenance",
   terminal: "rgb-discovery-terminal",
+  terminalBoot: "rgb-terminal-boot-complete",
   terminalHelp: "rgb-discovery-terminal-help",
   firstBreak: "rgb-discovery-first-break",
 } as const;

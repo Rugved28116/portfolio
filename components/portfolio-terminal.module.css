@@ -98,6 +98,22 @@
   margin-bottom: 1.5em;
 }
 
+.bootSequence {
+  margin-bottom: 1.5em;
+  color: #aaa;
+}
+
+.bootLabel {
+  margin-bottom: 0.5em;
+  color: var(--rgb-accent);
+}
+
+.bootLine {
+  min-height: 1.5em;
+  overflow-wrap: anywhere;
+  animation: boot-line-in 90ms ease-out both;
+}
+
 .location {
   overflow-wrap: anywhere;
   color: #aaa;
@@ -209,6 +225,11 @@
   50% { opacity: 0; }
 }
 
+@keyframes boot-line-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @media (max-width: 639px) {
   .window {
     inset: var(--terminal-viewport-top, 0px) 4px auto;
@@ -225,5 +246,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .input:focus + .caret { animation: none; }
+  .input:focus + .caret,
+  .bootLine {
+    animation: none;
+  }
 }

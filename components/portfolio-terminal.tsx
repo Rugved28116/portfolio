@@ -14,6 +14,7 @@ import {
 export type { TerminalData } from "@/lib/terminal-filesystem";
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -58,6 +59,13 @@ const systemMark = [
   " R  R  G   G  B   B",
   " R   R  GGG   BBBB  ___",
 ].join("\n");
+const bootLines = [
+  "initializing rgb-shell...",
+  "mounting portfolio...",
+  "loading workspace...",
+  "workers: standby",
+  "ready.",
+] as const;
 const TerminalContext = createContext<TerminalContextValue | null>(null);
 
 function useTerminalContext() {
@@ -85,6 +93,8 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
   const [cwd, setCwd] = useState(VIRTUAL_HOME);
   const startedAtRef = useRef<number | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [isBooting, setIsBooting] = useState(false);
+  const [bootLineCount, setBootLineCount] = useState(0);
   const [input, setInput] = useState("");
   const [entries, setEntries] = useState<readonly TerminalEntry[]>([]);
   const [commandHistory, setCommandHistory] = useState<readonly string[]>([]);
@@ -97,7 +107,41 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
   const entryIdRef = useRef(0);
   const savedInputRef = useRef("");
   const discoveryCommandCountRef = useRef(0);
+  const bootTimersRef = useRef<number[]>([]);
   const shellUser = data.prompt.split(":")[0];
+
+  const clearBootTimers = useCallback(() => {
+    for (const timer of bootTimersRef.current) {
+      window.clearTimeout(timer);
+    }
+    bootTimersRef.current = [];
+  }, []);
+
+  const startBootSequence = useCallback(() => {
+    clearBootTimers();
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      completeDiscovery(discoveryKeys.terminalBoot);
+      setIsBooting(false);
+      setBootLineCount(0);
+      return;
+    }
+
+    setIsBooting(true);
+    setBootLineCount(1);
+    for (let index = 2; index <= bootLines.length; index += 1) {
+      bootTimersRef.current.push(
+        window.setTimeout(() => setBootLineCount(index), (index - 1) * 110),
+      );
+    }
+    bootTimersRef.current.push(
+      window.setTimeout(() => {
+        completeDiscovery(discoveryKeys.terminalBoot);
+        setIsBooting(false);
+        bootTimersRef.current = [];
+      }, bootLines.length * 110),
+    );
+  }, [clearBootTimers]);
 
   function syncCaret() {
     const field = inputRef.current;
@@ -116,6 +160,9 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
   }
 
   function closeTerminal() {
+    clearBootTimers();
+    setIsBooting(false);
+    setBootLineCount(0);
     if (dialogRef.current?.open) {
       dialogRef.current.close();
     }
@@ -125,11 +172,22 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
 
   function openTerminal(opener: HTMLButtonElement) {
     completeDiscovery(discoveryKeys.terminal);
+    clearBootTimers();
+    setBootLineCount(0);
+    if (isDiscoveryComplete(discoveryKeys.terminalBoot)) {
+      setIsBooting(false);
+    } else {
+      startBootSequence();
+    }
     openerRef.current = opener;
     startedAtRef.current ??= Date.now();
     setHistoryIndex(null);
     setIsOpen(true);
   }
+
+  useEffect(() => {
+    return clearBootTimers;
+  }, [clearBootTimers]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -142,18 +200,21 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const focusFrame = requestAnimationFrame(() => inputRef.current?.focus());
-
     return () => {
-      cancelAnimationFrame(focusFrame);
       document.body.style.overflow = previousOverflow;
       if (dialog.open) dialog.close();
     };
   }, [isOpen]);
 
   useEffect(() => {
+    if (!isOpen || isBooting) return;
+    const focusFrame = requestAnimationFrame(() => inputRef.current?.focus());
+    return () => cancelAnimationFrame(focusFrame);
+  }, [isOpen, isBooting]);
+
+  useEffect(() => {
     outputRef.current?.scrollTo({ top: outputRef.current.scrollHeight });
-  }, [entries, isOpen]);
+  }, [entries, isOpen, isBooting, bootLineCount]);
 
   useEffect(() => {
     syncCaret();
@@ -180,6 +241,7 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
     event.preventDefault();
     const rawCommand = input.trim();
     if (!rawCommand) return;
+    setBootLineCount(0);
     const history = [...commandHistory, rawCommand];
     const result = runCommand(rawCommand, {
       data, nodes, cwd, history, now: new Date(),
@@ -323,6 +385,18 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
               Down for history, Tab to complete commands and paths, Shift+Tab to move focus, and Escape to close.
             </p>
 
+            {bootLineCount > 0 ? (
+              <div aria-hidden="true" className={styles.bootSequence}>
+                <p className={styles.bootLabel}>[ rgb-shell ]</p>
+                {bootLines.slice(0, bootLineCount).map((line) => (
+                  <p key={line} className={styles.bootLine}>
+                    {line}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+
+            {!isBooting ? (
             <div role="log" aria-label="Terminal scrollback" aria-live="polite" aria-relevant="additions">
               {entries.map((entry) => (
                 <div key={entry.id} className={styles.entry}>
@@ -377,12 +451,8 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
                 </div>
               ))}
             </div>
-            {discovery.hydrated &&
-            !discovery.completed[discoveryKeys.terminalHelp] ? (
-              <p aria-hidden="true" className={hintStyles.terminalPromptHint}>
-                tip: type &quot;help&quot; to list commands
-              </p>
             ) : null}
+            {!isBooting ? (
             <form onSubmit={executeInput} className={styles.prompt}>
               <p aria-hidden="true" className={styles.location}>
                 {shellUser}:<span className={styles.path}>{displayPath(cwd)}</span>$
@@ -416,6 +486,14 @@ export function TerminalProvider({ children, data }: TerminalProviderProps) {
                 </div>
               </div>
             </form>
+            ) : null}
+            {!isBooting &&
+            discovery.hydrated &&
+            !discovery.completed[discoveryKeys.terminalHelp] ? (
+              <p aria-hidden="true" className={hintStyles.terminalPromptHint}>
+                tip: type &quot;help&quot; to list commands
+              </p>
+            ) : null}
           </div>
         </div>
       </dialog>

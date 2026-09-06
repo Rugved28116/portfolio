@@ -8,6 +8,7 @@ import {
 } from "@/components/portfolio-terminal";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { RouteTransition } from "@/components/route-transition";
 import { siteContent } from "@/content/site";
 import { getLabEntries, getProjects, getPublishedNotes } from "@/lib/content";
 
@@ -126,7 +127,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </a>
           <SiteHeader />
           <main id="main-content" className="flex-1">
-            {children}
+            <RouteTransition>{children}</RouteTransition>
           </main>
           <SiteFooter />
         </TerminalProvider>

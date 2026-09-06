@@ -20,11 +20,15 @@ import {
 } from "react";
 
 import hintStyles from "./discovery-hints.module.css";
+import transitionStyles from "./maintenance-transition.module.css";
+import toggleStyles from "./maintenance-toggle.module.css";
 
 type DamageVariant = "fall" | "hang" | "shift" | "fade" | "collapse" | "tilt";
 type BrokenElements = ReadonlyMap<string, DamageVariant>;
+type SystemStatus = "maintenance-on" | "restoring" | "normal" | null;
 type MaintenanceContextValue = {
   maintenanceMode: boolean;
+  maintenanceCrewVisible: boolean;
   brokenElements: BrokenElements;
   repairingElements: ReadonlySet<string>;
   toggleMaintenanceMode: () => void;
@@ -37,6 +41,7 @@ type MaintenanceContextValue = {
 const MaintenanceContext = createContext<MaintenanceContextValue | null>(null);
 const selector = "[data-maintenance-breakable][data-maintenance-id]";
 const protectedSelector = "a[href], nav, footer, dialog, form, button, input, select, textarea, [role='button'], [role='dialog'], [contenteditable], [data-maintenance-protected]";
+const WORKER_EXIT_DURATION = 760;
 
 function registeredElements() {
   return Array.from(document.querySelectorAll<HTMLElement>(`#main-content ${selector}`))
@@ -53,8 +58,17 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const discovery = useDiscoveryState();
   const paintedParts = useRef(new Set<HTMLElement>());
+  const maintenanceModeRef = useRef(false);
+  const statusTimers = useRef<number[]>([]);
+  const workerExitTimer = useRef<number | null>(null);
+  const previousPathname = useRef(pathname);
   const [showCrewNotice, setShowCrewNotice] = useState(false);
   const [hoverHint, setHoverHint] = useState<{ left: number; top: number } | null>(null);
+  const [systemStatus, setSystemStatus] = useState<SystemStatus>(null);
+  const [workerPresentation, setWorkerPresentation] = useState<{
+    readonly phase: "inactive" | "active" | "exiting";
+    readonly session: number;
+  }>({ phase: "inactive", session: 0 });
   const [state, setState] = useState(() => ({
     pathname,
     maintenanceMode: false,
@@ -67,10 +81,69 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
     setState({ ...state, pathname, brokenElements: new Map(), repairingElements: new Set() });
   }
 
-  const toggleMaintenanceMode = useCallback(() => {
-    setHoverHint(null);
-    setState((current) => ({ ...current, maintenanceMode: !current.maintenanceMode, brokenElements: new Map(), repairingElements: new Set() }));
+  const clearStatusTimers = useCallback(() => {
+    for (const timer of statusTimers.current) window.clearTimeout(timer);
+    statusTimers.current = [];
   }, []);
+
+  const clearWorkerExitTimer = useCallback(() => {
+    if (workerExitTimer.current === null) return;
+    window.clearTimeout(workerExitTimer.current);
+    workerExitTimer.current = null;
+  }, []);
+
+  const showSystemTransition = useCallback((maintenanceMode: boolean) => {
+    clearStatusTimers();
+    const scheduleStatus = (status: SystemStatus, delay: number) => {
+      const timer = window.setTimeout(() => {
+        statusTimers.current = statusTimers.current.filter(
+          (activeTimer) => activeTimer !== timer,
+        );
+        setSystemStatus(status);
+      }, delay);
+      statusTimers.current.push(timer);
+    };
+
+    if (maintenanceMode) {
+      setSystemStatus("maintenance-on");
+      scheduleStatus(null, 1250);
+      return;
+    }
+
+    setSystemStatus("restoring");
+    scheduleStatus("normal", 280);
+    scheduleStatus(null, 760);
+  }, [clearStatusTimers]);
+
+  const toggleMaintenanceMode = useCallback(() => {
+    const maintenanceMode = !maintenanceModeRef.current;
+    maintenanceModeRef.current = maintenanceMode;
+    clearWorkerExitTimer();
+    setHoverHint(null);
+    setShowCrewNotice(false);
+    setState((current) => ({ ...current, maintenanceMode, brokenElements: new Map(), repairingElements: new Set() }));
+
+    if (maintenanceMode) {
+      setWorkerPresentation((current) => ({
+        phase: "active",
+        session: current.session + 1,
+      }));
+    } else if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setWorkerPresentation((current) => ({ ...current, phase: "inactive" }));
+    } else {
+      setWorkerPresentation((current) => ({ ...current, phase: "exiting" }));
+      workerExitTimer.current = window.setTimeout(() => {
+        workerExitTimer.current = null;
+        setWorkerPresentation((current) =>
+          current.phase === "exiting"
+            ? { ...current, phase: "inactive" }
+            : current,
+        );
+      }, WORKER_EXIT_DURATION);
+    }
+
+    showSystemTransition(maintenanceMode);
+  }, [clearWorkerExitTimer, showSystemTransition]);
   const repairAll = useCallback(() => {
     setState((current) => ({ ...current, brokenElements: new Map(), repairingElements: new Set() }));
   }, []);
@@ -112,6 +185,24 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
     setHoverHint(null);
     setShowCrewNotice(true);
   }, []);
+
+  useEffect(() => {
+    return () => {
+      clearStatusTimers();
+      clearWorkerExitTimer();
+    };
+  }, [clearStatusTimers, clearWorkerExitTimer]);
+
+  useEffect(() => {
+    if (previousPathname.current === pathname) return;
+    previousPathname.current = pathname;
+    clearWorkerExitTimer();
+    setWorkerPresentation((current) =>
+      current.phase === "exiting"
+        ? { ...current, phase: "inactive" }
+        : current,
+    );
+  }, [pathname, clearWorkerExitTimer]);
 
   useEffect(() => {
     if (!showCrewNotice) return;
@@ -231,16 +322,33 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
   }, [state.maintenanceMode, discovery.hydrated, discovery.completed]);
 
   return (
-    <MaintenanceContext.Provider value={{ ...state, toggleMaintenanceMode, breakElement, beginRepair, repairElement, repairAll }}>
+    <MaintenanceContext.Provider
+      value={{
+        ...state,
+        maintenanceCrewVisible: workerPresentation.phase !== "inactive",
+        toggleMaintenanceMode,
+        breakElement,
+        beginRepair,
+        repairElement,
+        repairAll,
+      }}
+    >
       {children}
-      {state.maintenanceMode ? (
+      {workerPresentation.phase !== "inactive" ? (
         <MaintenanceWorkerLayer
-          brokenElementIds={[...state.brokenElements.keys()]}
+          key={workerPresentation.session}
+          brokenElementIds={
+            workerPresentation.phase === "active"
+              ? [...state.brokenElements.keys()]
+              : []
+          }
           beginRepair={beginRepair}
           repairElement={repairElement}
+          exiting={workerPresentation.phase === "exiting"}
         />
       ) : null}
       {state.maintenanceMode &&
+      systemStatus === null &&
       discovery.hydrated &&
       !discovery.completed[discoveryKeys.firstBreak] ? (
         <aside aria-hidden="true" className={hintStyles.guide}>
@@ -262,10 +370,34 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
           BREAK ME
         </span>
       ) : null}
-      {showCrewNotice ? (
+      {showCrewNotice && systemStatus === null ? (
         <p aria-hidden="true" className={hintStyles.crewNotice}>
           CREW DISPATCHED
         </p>
+      ) : null}
+      {systemStatus ? (
+        <aside
+          className={transitionStyles.status}
+          data-system-status={systemStatus}
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <span className={transitionStyles.statusLabel}>RGB / SYSTEM</span>
+          <span className={transitionStyles.statusValue}>
+            {systemStatus === "maintenance-on"
+              ? "MAINTENANCE / ON"
+              : systemStatus === "restoring"
+                ? "RESTORING INTERFACE..."
+                : "SYSTEM / NORMAL"}
+          </span>
+          {systemStatus === "maintenance-on" ? (
+            <span className={transitionStyles.statusDetail}>crew standing by</span>
+          ) : null}
+        </aside>
+      ) : null}
+      {systemStatus === "maintenance-on" ? (
+        <span className={transitionStyles.scan} aria-hidden="true" />
       ) : null}
     </MaintenanceContext.Provider>
   );
@@ -274,7 +406,38 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
 export function MaintenanceToggle({ mark }: { mark: string }) {
   const { maintenanceMode, toggleMaintenanceMode } = useMaintenance();
   const discovery = useDiscoveryState();
-  const label = `${maintenanceMode ? "Disable" : "Enable"} RGB maintenance mode`;
+  const [feedback, setFeedback] = useState<"maintenance" | "ok" | null>(null);
+  const feedbackTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimerRef.current !== null) {
+        window.clearTimeout(feedbackTimerRef.current);
+      }
+    };
+  }, []);
+
+  function showFeedback(nextFeedback: "maintenance" | "ok") {
+    if (feedbackTimerRef.current !== null) {
+      window.clearTimeout(feedbackTimerRef.current);
+    }
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setFeedback(null);
+      feedbackTimerRef.current = null;
+      return;
+    }
+
+    setFeedback(nextFeedback);
+    feedbackTimerRef.current = window.setTimeout(
+      () => {
+        setFeedback(null);
+        feedbackTimerRef.current = null;
+      },
+      nextFeedback === "maintenance" ? 650 : 500,
+    );
+  }
+
   return (
     <div className={`flex min-w-0 flex-wrap items-center gap-x-3 font-mono ${hintStyles.control}`}>
       <button
@@ -282,25 +445,41 @@ export function MaintenanceToggle({ mark }: { mark: string }) {
         onClick={() => {
           if (!maintenanceMode) completeDiscovery(discoveryKeys.maintenance);
           toggleMaintenanceMode();
+          showFeedback(maintenanceMode ? "ok" : "maintenance");
         }}
-        aria-label={label}
+        aria-label="Toggle RGB maintenance mode"
         aria-pressed={maintenanceMode}
         aria-describedby="maintenance-instructions"
-        title={label}
-        className="flex min-h-11 cursor-pointer items-center text-sm font-semibold tracking-[0.08em] text-foreground hover:text-accent"
+        title="Toggle RGB maintenance mode"
+        className={`${toggleStyles.button} flex min-h-11 cursor-pointer items-center text-sm font-semibold tracking-[0.08em] text-foreground hover:text-accent`}
       >
-        {mark}
+        <span aria-hidden="true" className={toggleStyles.visual}>
+          <span
+            className={`${toggleStyles.idle} ${feedback ? toggleStyles.idleHidden : ""}`}
+          >
+            {mark.slice(0, -1)}
+            <span className={toggleStyles.cursor}>
+              <span className={toggleStyles.underscore}>_</span>
+              <span className={toggleStyles.block}>█</span>
+            </span>
+          </span>
+          {feedback ? (
+            <span className={toggleStyles.feedback}>
+              {feedback === "maintenance" ? "RGB_MAINT" : "RGB_OK"}
+            </span>
+          ) : null}
+        </span>
       </button>
       {discovery.hydrated &&
       !discovery.completed[discoveryKeys.maintenance] ? (
-        <span aria-hidden="true" className={hintStyles.controlHint}>
+        <span
+          aria-hidden="true"
+          className={`${hintStyles.controlHint} ${toggleStyles.discoveryHint}`}
+        >
           CLICK ME <span className={hintStyles.desktopTitle}>↑</span>
           <span className={hintStyles.mobileTitle}>←</span>
         </span>
       ) : null}
-      <span role="status" className="text-[0.5625rem] uppercase tracking-[0.1em] text-accent">
-        {maintenanceMode ? "MAINTENANCE / ON" : ""}
-      </span>
       <span id="maintenance-instructions" className="sr-only">
         Optional visual mode. When enabled, click marked content to damage or repair it.
         Links always navigate normally. Disable to restore everything. Changing pages clears damage.

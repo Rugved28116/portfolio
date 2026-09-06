@@ -1,0 +1,92 @@
+.button {
+  flex: none;
+  width: 6rem;
+  text-align: left;
+}
+
+.visual {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 1.25em;
+}
+
+.idle,
+.feedback {
+  position: absolute;
+  inset: 0 auto auto 0;
+  white-space: nowrap;
+}
+
+.idleHidden {
+  opacity: 0;
+}
+
+.feedback {
+  color: var(--rgb-accent);
+  animation: feedback-in 140ms ease-out both;
+}
+
+.cursor {
+  position: relative;
+  display: inline-grid;
+  width: 1ch;
+}
+
+.underscore,
+.block {
+  grid-area: 1 / 1;
+}
+
+.block {
+  opacity: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button:hover .underscore {
+    animation: cursor-underscore 600ms step-end 1;
+  }
+
+  .button:hover .block {
+    animation: cursor-block 600ms step-end 1;
+  }
+}
+
+.button:focus-visible .underscore {
+  animation: cursor-underscore 600ms step-end 1;
+}
+
+.button:focus-visible .block {
+  animation: cursor-block 600ms step-end 1;
+}
+
+@keyframes cursor-underscore {
+  0%, 24%, 50%, 74%, 100% { opacity: 1; }
+  25%, 49%, 75%, 87% { opacity: 0; }
+}
+
+@keyframes cursor-block {
+  0%, 24%, 50%, 74%, 100% { opacity: 0; }
+  25%, 49%, 75%, 87% { opacity: 1; }
+}
+
+@keyframes feedback-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 639px) {
+  .discoveryHint {
+    left: 6.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button:hover .underscore,
+  .button:hover .block,
+  .button:focus-visible .underscore,
+  .button:focus-visible .block,
+  .feedback {
+    animation: none;
+  }
+}

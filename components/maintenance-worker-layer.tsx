@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -13,6 +14,7 @@ import styles from "./maintenance-worker-layer.module.css";
 
 type WorkerState =
   | "spawning"
+  | "exiting"
   | "idle"
   | "wandering"
   | "moving-to-rest"
@@ -85,6 +87,7 @@ type WorkerLayerProps = {
   readonly brokenElementIds: readonly string[];
   readonly beginRepair: (id: string) => void;
   readonly repairElement: (id: string) => void;
+  readonly exiting: boolean;
 };
 
 type Point = { readonly x: number; readonly y: number };
@@ -513,6 +516,55 @@ function movementDuration(distance: number) {
   return Math.round(clamp(280 + distance * 1.25, 320, 1500));
 }
 
+function exitWorker(worker: Worker): Worker {
+  const edgeOffset = window.innerWidth < 640 ? 28 : 44;
+  const exitPoints = [
+    {
+      point: { x: -WORKER_WIDTH - edgeOffset, y: worker.y },
+      distance: Math.abs(worker.x + WORKER_WIDTH + edgeOffset),
+      facing: "left" as const,
+    },
+    {
+      point: { x: window.innerWidth + edgeOffset, y: worker.y },
+      distance: Math.abs(window.innerWidth + edgeOffset - worker.x),
+      facing: "right" as const,
+    },
+    {
+      point: { x: worker.x, y: window.innerHeight + edgeOffset },
+      distance: Math.abs(window.innerHeight + edgeOffset - worker.y),
+      facing: worker.facing,
+    },
+  ];
+  const exit = exitPoints.sort((a, b) => a.distance - b.distance)[0];
+
+  return {
+    ...worker,
+    ...exit.point,
+    state: "exiting",
+    assignedDamageId: undefined,
+    activityTargetId: undefined,
+    afterMove: undefined,
+    facing: exit.facing,
+    duration: prefersReducedMotion()
+      ? 0
+      : Math.round(clamp(500 + exit.distance * 0.25, 520, 720)),
+    pauseDuration: undefined,
+    carrying: false,
+    climbing: false,
+    equipment: undefined,
+    scaffoldId: undefined,
+    repairX: undefined,
+    repairY: undefined,
+    baseX: undefined,
+    baseY: undefined,
+    equipmentX: undefined,
+    equipmentY: undefined,
+    equipmentHeight: undefined,
+    restSlotId: undefined,
+    restKind: undefined,
+  };
+}
+
 function repairDuration(personality: WorkerPersonality) {
   if (personality === "engineer") return 850;
   if (personality === "carrier") return 1120;
@@ -536,11 +588,20 @@ function shouldCarry(worker: Worker, damageId: string) {
   return worker.personality === "carrier" && hashText(damageId) % 2 === 0;
 }
 
-function WorkerBot({ worker, speech }: { readonly worker: Worker; readonly speech?: WorkerSpeech }) {
+function WorkerBot({
+  worker,
+  speech,
+  spawnIndex,
+}: {
+  readonly worker: Worker;
+  readonly speech?: WorkerSpeech;
+  readonly spawnIndex: number;
+}) {
   const style = {
     "--worker-x": `${worker.x}px`,
     "--worker-y": `${worker.y}px`,
     "--worker-duration": `${worker.duration}ms`,
+    "--worker-spawn-delay": `${spawnIndex * 50}ms`,
   } as CSSProperties;
   const speechStyle = speech ? {
     "--speech-lifetime": `${speech.duration}ms`,
@@ -638,7 +699,12 @@ function WorkerScaffold({ scaffold }: { readonly scaffold: Scaffold }) {
   );
 }
 
-export function MaintenanceWorkerLayer({ brokenElementIds, beginRepair, repairElement }: WorkerLayerProps) {
+export function MaintenanceWorkerLayer({
+  brokenElementIds,
+  beginRepair,
+  repairElement,
+  exiting,
+}: WorkerLayerProps) {
   const [system, setSystem] = useState<WorkerSystem>(() => ({ workers: initialWorkers(), queue: [], scaffolds: [] }));
   const [speech, setSpeech] = useState<readonly WorkerSpeech[]>([]);
   const [viewportRevision, setViewportRevision] = useState(0);
@@ -715,11 +781,27 @@ export function MaintenanceWorkerLayer({ brokenElementIds, beginRepair, repairEl
     return true;
   }, [dismissSpeech]);
 
+  useLayoutEffect(() => {
+    if (!exiting) return;
+    for (const task of stateTasks.current.values()) clearTimeout(task.timer);
+    for (const timer of spawnTimers.current) clearTimeout(timer);
+    for (const timer of speechTimers.current.values()) clearTimeout(timer);
+    stateTasks.current.clear();
+    spawnTimers.current = [];
+    speechTimers.current.clear();
+    speechRef.current = [];
+    brokenIdsRef.current.clear();
+    previousBrokenIds.current.clear();
+    previousWorkerStates.current.clear();
+    reactedScaffolds.current.clear();
+  }, [exiting]);
+
   useEffect(() => {
     brokenIdsRef.current = new Set(brokenElementIds);
   }, [brokenElementIds]);
 
   useEffect(() => {
+    if (exiting) return;
     const timer = setTimeout(() => {
       const previous = previousBrokenIds.current;
       const added = brokenElementIds.filter((id) => !previous.has(id));
@@ -738,9 +820,10 @@ export function MaintenanceWorkerLayer({ brokenElementIds, beginRepair, repairEl
     return () => clearTimeout(timer);
     // IDs are compared as a set; worker movement must not retrigger damage reactions.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brokenKey, trySpeak]);
+  }, [brokenKey, trySpeak, exiting]);
 
   useEffect(() => {
+    if (exiting) return;
     const timer = setTimeout(() => {
       for (const scaffold of system.scaffolds) {
         if (reactedScaffolds.current.has(scaffold.id)) continue;
@@ -756,9 +839,10 @@ export function MaintenanceWorkerLayer({ brokenElementIds, beginRepair, repairEl
     return () => clearTimeout(timer);
     // Geometry changes do not create a new cluster reaction.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scaffoldKey, trySpeak]);
+  }, [scaffoldKey, trySpeak, exiting]);
 
   useEffect(() => {
+    if (exiting) return;
     const timer = setTimeout(() => {
       for (const worker of system.workers) {
         const previous = previousWorkerStates.current.get(worker.id);
@@ -771,9 +855,10 @@ export function MaintenanceWorkerLayer({ brokenElementIds, beginRepair, repairEl
       }
     }, 0);
     return () => clearTimeout(timer);
-  }, [system.workers, trySpeak]);
+  }, [system.workers, trySpeak, exiting]);
 
   useEffect(() => {
+    if (exiting) return;
     const timer = setTimeout(() => {
       for (const entry of speechRef.current) {
         if (entry.context !== "rest") continue;
@@ -784,9 +869,10 @@ export function MaintenanceWorkerLayer({ brokenElementIds, beginRepair, repairEl
       }
     }, 0);
     return () => clearTimeout(timer);
-  }, [system.workers, dismissSpeech]);
+  }, [system.workers, dismissSpeech, exiting]);
 
   useEffect(() => {
+    if (exiting) return;
     function refreshViewport() {
       if (viewportFrame.current !== undefined) return;
       viewportFrame.current = requestAnimationFrame(() => {
@@ -801,7 +887,7 @@ export function MaintenanceWorkerLayer({ brokenElementIds, beginRepair, repairEl
       window.removeEventListener("resize", refreshViewport);
       if (viewportFrame.current !== undefined) cancelAnimationFrame(viewportFrame.current);
     };
-  }, []);
+  }, [exiting]);
 
   const updateWorker = useCallback((workerId: string, update: (worker: Worker) => Worker) => {
     setSystem((current) => {
@@ -817,10 +903,11 @@ export function MaintenanceWorkerLayer({ brokenElementIds, beginRepair, repairEl
   }, []);
 
   useEffect(() => {
+    if (exiting) return;
     const reducedMotion = prefersReducedMotion();
     system.workers.forEach((worker, index) => {
-      const delay = reducedMotion ? 0 : index * 140;
-      const duration = reducedMotion ? 0 : 520 + index * 35;
+      const delay = reducedMotion ? 0 : index * 50;
+      const duration = reducedMotion ? 0 : 380;
       const destination = spawnDestination(index);
       spawnTimers.current.push(setTimeout(() => {
         updateWorker(worker.id, (current) => ({ ...current, ...destination, duration }));
@@ -835,9 +922,10 @@ export function MaintenanceWorkerLayer({ brokenElementIds, beginRepair, repairEl
     };
     // The initial worker set remains stable until the layer unmounts.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [updateWorker]);
+  }, [updateWorker, exiting]);
 
   useEffect(() => {
+    if (exiting) return;
     const broken = new Set(brokenElementIds);
     const timer = setTimeout(() => {
       setSystem((current) => {
@@ -958,9 +1046,10 @@ export function MaintenanceWorkerLayer({ brokenElementIds, beginRepair, repairEl
     return () => clearTimeout(timer);
     // IDs are compared as a set while insertion order remains the queue's age order.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brokenKey, viewportRevision]);
+  }, [brokenKey, viewportRevision, exiting]);
 
   useEffect(() => {
+    if (exiting) return;
     const timer = setTimeout(() => {
       setSystem((current) => {
         const availableStates = new Set<WorkerState>([
@@ -1026,9 +1115,10 @@ export function MaintenanceWorkerLayer({ brokenElementIds, beginRepair, repairEl
       });
     }, 0);
     return () => clearTimeout(timer);
-  }, [system.queue, system.workers]);
+  }, [system.queue, system.workers, exiting]);
 
   useEffect(() => {
+    if (exiting) return;
     const activeSignatures = new Map<string, string>();
 
     for (const worker of system.workers) {
@@ -1398,7 +1488,7 @@ export function MaintenanceWorkerLayer({ brokenElementIds, beginRepair, repairEl
         stateTasks.current.delete(workerId);
       }
     }
-  }, [system.workers, beginRepair, repairElement, updateWorker]);
+  }, [system.workers, beginRepair, repairElement, updateWorker, exiting]);
 
   useEffect(() => () => {
     for (const task of stateTasks.current.values()) clearTimeout(task.timer);
@@ -1415,12 +1505,35 @@ export function MaintenanceWorkerLayer({ brokenElementIds, beginRepair, repairEl
     reactedScaffolds.current.clear();
   }, []);
 
+  const renderedWorkers = exiting
+    ? system.workers.map((worker) => exitWorker(worker))
+    : system.workers;
+
   return (
-    <div className={styles.layer} aria-hidden="true" data-worker-layer data-repair-queue-size={system.queue.length}>
-      {system.scaffolds.map((scaffold) => <WorkerScaffold key={scaffold.id} scaffold={scaffold} />)}
-      {system.workers.map((worker) => <WorkerLadder key={`ladder-${worker.id}`} worker={worker} />)}
-      {system.workers.map((worker) => (
-        <WorkerBot key={worker.id} worker={worker} speech={speech.find((entry) => entry.workerId === worker.id)} />
+    <div
+      className={styles.layer}
+      aria-hidden="true"
+      data-worker-layer
+      data-worker-phase={exiting ? "exiting" : "active"}
+      data-repair-queue-size={exiting ? 0 : system.queue.length}
+    >
+      {!exiting
+        ? system.scaffolds.map((scaffold) => <WorkerScaffold key={scaffold.id} scaffold={scaffold} />)
+        : null}
+      {!exiting
+        ? system.workers.map((worker) => <WorkerLadder key={`ladder-${worker.id}`} worker={worker} />)
+        : null}
+      {renderedWorkers.map((worker, index) => (
+        <WorkerBot
+          key={worker.id}
+          worker={worker}
+          speech={
+            exiting
+              ? undefined
+              : speech.find((entry) => entry.workerId === worker.id)
+          }
+          spawnIndex={index}
+        />
       ))}
     </div>
   );
