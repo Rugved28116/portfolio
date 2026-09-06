@@ -62,6 +62,9 @@ export type ProjectCaseStudy = {
   readonly overview?: string;
   readonly problem?: string;
   readonly approach?: string;
+  readonly architecture?: string;
+  readonly challenges?: string;
+  readonly lessons?: string;
   readonly outcome?: string;
 };
 
