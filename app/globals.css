@@ -54,6 +54,11 @@ select {
   color: var(--rgb-background);
 }
 
+::-moz-selection {
+  background: var(--rgb-accent);
+  color: var(--rgb-background);
+}
+
 :focus-visible {
   outline: 2px solid var(--rgb-accent);
   outline-offset: 3px;
