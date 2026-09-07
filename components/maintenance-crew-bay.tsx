@@ -40,7 +40,9 @@ export function MaintenanceCrewBay() {
 
         <span className={styles.restSlot} data-maintenance-rest-slot="bench-left" data-rest-kind="bench" />
         <span className={styles.restSlot} data-maintenance-rest-slot="bench-right" data-rest-kind="bench" />
+        <span className={`${styles.restSlot} ${styles.standingLeftSlot}`} data-maintenance-rest-slot="standing-left" data-rest-kind="bench" />
         <span className={styles.restSlot} data-maintenance-rest-slot="crate-side" data-rest-kind="crate" />
+        <span className={`${styles.restSlot} ${styles.standingRightSlot}`} data-maintenance-rest-slot="standing-right" data-rest-kind="bench" />
         <span className={`${styles.restSlot} ${styles.consoleSlot}`} data-maintenance-rest-slot="console-side" data-rest-kind="console" />
       </div>
     </aside>

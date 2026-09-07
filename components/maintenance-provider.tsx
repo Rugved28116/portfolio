@@ -197,11 +197,11 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
     if (previousPathname.current === pathname) return;
     previousPathname.current = pathname;
     clearWorkerExitTimer();
-    setWorkerPresentation((current) =>
-      current.phase === "exiting"
-        ? { ...current, phase: "inactive" }
-        : current,
-    );
+    setWorkerPresentation((current) => {
+      if (current.phase === "exiting") return { ...current, phase: "inactive" };
+      if (current.phase === "active") return { phase: "active", session: current.session + 1 };
+      return current;
+    });
   }, [pathname, clearWorkerExitTimer]);
 
   useEffect(() => {

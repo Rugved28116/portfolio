@@ -9,7 +9,7 @@
 
 .bay {
   position: relative;
-  width: 204px;
+  width: 240px;
   height: 78px;
   margin-left: auto;
   overflow: hidden;
@@ -30,7 +30,7 @@
   position: absolute;
   right: 0;
   bottom: 8px;
-  width: 196px;
+  width: 232px;
   height: 2px;
   background: #34393c;
 }
@@ -173,10 +173,12 @@
   opacity: 0;
 }
 
-.restSlot[data-maintenance-rest-slot="bench-left"] { bottom: 13px; left: 13px; }
+.restSlot[data-maintenance-rest-slot="bench-left"] { bottom: 13px; left: 12px; }
 .restSlot[data-maintenance-rest-slot="bench-right"] { bottom: 13px; left: 47px; }
-.restSlot[data-maintenance-rest-slot="crate-side"] { bottom: 9px; left: 126px; }
-.restSlot[data-maintenance-rest-slot="console-side"] { right: 38px; bottom: 9px; }
+.standingLeftSlot { bottom: 9px; left: 82px; }
+.restSlot[data-maintenance-rest-slot="crate-side"] { bottom: 9px; left: 117px; }
+.standingRightSlot { bottom: 9px; left: 152px; }
+.restSlot[data-maintenance-rest-slot="console-side"] { right: 23px; bottom: 9px; }
 
 @media (min-width: 40rem) {
   .boundary { padding-inline: 2rem; }
@@ -197,4 +199,7 @@
   .consoleSlot { display: none; }
 
   .restSlot[data-maintenance-rest-slot="crate-side"] { left: 116px; }
+  .standingLeftSlot { left: 76px; }
+  .standingRightSlot,
+  .consoleSlot { display: none; }
 }

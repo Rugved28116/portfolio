@@ -52,6 +52,7 @@ type Scaffold = {
 
 type Worker = {
   readonly id: string;
+  readonly sequence: number;
   readonly personality: WorkerPersonality;
   readonly x: number;
   readonly y: number;
@@ -91,6 +92,7 @@ type WorkerLayerProps = {
 };
 
 type Point = { readonly x: number; readonly y: number };
+type CrewLimits = { readonly baseline: number; readonly maximum: number };
 type ScheduledTask = {
   readonly signature: string;
   readonly timer: ReturnType<typeof setTimeout>;
@@ -147,18 +149,52 @@ const speechPhrases: Record<WorkerPersonality, Record<Exclude<SpeechContext, "da
 };
 const damageSpeech = ["new fault", "damage detected", "again?", "repair requested"] as const;
 const clusterSpeech = ["that's a lot", "crew needed", "multiple faults"] as const;
-const desktopPersonalities: readonly WorkerPersonality[] = [
+const personalityRotation: readonly WorkerPersonality[] = [
+  "engineer",
+  "generalist",
+  "inspector",
+  "engineer",
+  "carrier",
+  "generalist",
   "engineer",
   "inspector",
+  "generalist",
   "carrier",
+  "engineer",
   "slacker",
   "generalist",
-];
-const mobilePersonalities: readonly WorkerPersonality[] = [
-  "engineer",
   "inspector",
+  "engineer",
+  "carrier",
   "generalist",
+  "inspector",
+  "engineer",
+  "slacker",
 ];
+
+function getCrewLimits(viewportWidth: number): CrewLimits {
+  if (viewportWidth < 640) return { baseline: 4, maximum: 8 };
+  if (viewportWidth < 1024) return { baseline: 6, maximum: 12 };
+  if (viewportWidth < 1440) return { baseline: 8, maximum: 20 };
+  return { baseline: 10, maximum: 22 };
+}
+
+function getDesiredCrewSize({
+  brokenCount,
+  viewportWidth,
+  activeJobs,
+}: {
+  readonly brokenCount: number;
+  readonly viewportWidth: number;
+  readonly activeJobs: number;
+}) {
+  const limits = getCrewLimits(viewportWidth);
+  const workload = Math.max(brokenCount, activeJobs);
+  const growth = viewportWidth < 640
+    ? [0, 1, 2, 3, 3, 4][Math.min(workload, 5)]
+    : [0, 1, 3, 5, 7, 9, 9, 12][Math.min(workload, 7)];
+  return Math.min(limits.maximum, limits.baseline + growth);
+}
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
@@ -166,6 +202,18 @@ function clamp(value: number, minimum: number, maximum: number) {
 
 function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function documentWidth() {
+  return Math.max(document.documentElement.clientWidth, window.innerWidth);
+}
+
+function documentHeight() {
+  return Math.max(
+    document.documentElement.scrollHeight,
+    document.body.scrollHeight,
+    window.innerHeight,
+  );
 }
 
 function hashText(value: string) {
@@ -180,33 +228,53 @@ function phrasesFor(personality: WorkerPersonality, context: SpeechContext) {
   return speechPhrases[personality][context];
 }
 
-function initialWorkers(): readonly Worker[] {
+function workerEntryPoint(index: number): Point {
   const width = window.innerWidth;
   const height = window.innerHeight;
-  const personalities = width < 640 ? mobilePersonalities : desktopPersonalities;
+  const originX = window.scrollX;
+  const originY = window.scrollY;
+  const edge = index % 3;
+  return {
+    x: originX + (edge === 0
+      ? -WORKER_WIDTH - 8
+      : edge === 1
+        ? width + 8
+        : width * (0.18 + (index % 5) * 0.15)),
+    y: originY + (edge === 2 ? height + 8 : height * (0.2 + (index % 4) * 0.18)),
+  };
+}
 
-  return personalities.map((personality, index) => {
-    const edge = index % 3;
-    return {
-      id: `rgb-worker-${String(index + 1).padStart(2, "0")}`,
-      personality,
-      x: edge === 0 ? -WORKER_WIDTH - 8 : edge === 1 ? width + 8 : width * (0.2 + index * 0.13),
-      y: edge === 2 ? height + 8 : height * (0.25 + (index % 3) * 0.22),
-      state: "spawning",
-      facing: edge === 1 ? "left" : "right",
-      duration: 0,
-      carrying: false,
-      climbing: false,
-    };
-  });
+function createWorker(index: number, spawnDelay = 0): Worker {
+  const entry = workerEntryPoint(index);
+  return {
+    id: `rgb-worker-${String(index + 1).padStart(2, "0")}`,
+    sequence: index,
+    personality: personalityRotation[index % personalityRotation.length],
+    ...entry,
+    state: "spawning",
+    facing: index % 3 === 1 ? "left" : "right",
+    duration: 0,
+    pauseDuration: spawnDelay,
+    carrying: false,
+    climbing: false,
+  };
+}
+
+function initialWorkers(): readonly Worker[] {
+  const { baseline } = getCrewLimits(window.innerWidth);
+  const reducedMotion = prefersReducedMotion();
+  return Array.from(
+    { length: baseline },
+    (_, index) => createWorker(index, reducedMotion ? 0 : index * 80),
+  );
 }
 
 function spawnDestination(index: number): Point {
   const columns = [0.12, 0.84, 0.28, 0.68, 0.48];
   const rows = [0.28, 0.52, 0.74, 0.34, 0.66];
   return {
-    x: clamp(window.innerWidth * columns[index], 18, window.innerWidth - WORKER_WIDTH - 18),
-    y: clamp(window.innerHeight * rows[index], HEADER_CLEARANCE, window.innerHeight - WORKER_HEIGHT - 18),
+    x: window.scrollX + clamp(window.innerWidth * columns[index % columns.length], 18, window.innerWidth - WORKER_WIDTH - 18),
+    y: window.scrollY + clamp(window.innerHeight * rows[index % rows.length], HEADER_CLEARANCE, window.innerHeight - WORKER_HEIGHT - 18),
   };
 }
 
@@ -218,24 +286,47 @@ function findMaintenanceElement(id: string) {
   return registeredParts().find((element) => element.dataset.maintenanceId === id);
 }
 
-function visibleRect(element: HTMLElement) {
+function documentRect(element: HTMLElement) {
   const rect = element.getBoundingClientRect();
-  return rect.bottom > HEADER_CLEARANCE && rect.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth
-    ? rect
-    : undefined;
+  return {
+    left: rect.left + window.scrollX,
+    right: rect.right + window.scrollX,
+    top: rect.top + window.scrollY,
+    bottom: rect.bottom + window.scrollY,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+function visibleDocumentRect(element: HTMLElement) {
+  const rect = element.getBoundingClientRect();
+  if (!(rect.bottom > HEADER_CLEARANCE && rect.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth)) {
+    return undefined;
+  }
+  return documentRect(element);
 }
 
 function positionIsClear(point: Point) {
+  const viewportX = point.x - window.scrollX;
+  const viewportY = point.y - window.scrollY;
+  if (viewportX < 0 || viewportX > window.innerWidth || viewportY < 0 || viewportY > window.innerHeight) return true;
   return !document
-    .elementFromPoint(point.x + WORKER_WIDTH / 2, point.y + WORKER_HEIGHT / 2)
+    .elementFromPoint(viewportX + WORKER_WIDTH / 2, viewportY + WORKER_HEIGHT / 2)
     ?.closest("button, input, select, textarea, [role='button']");
 }
 
-function targetBesideElement(id: string, occupied: readonly Worker[]): Point | undefined {
+function targetBesideElement(
+  id: string,
+  occupied: readonly Worker[],
+  requireVisible = true,
+): Point | undefined {
   const element = findMaintenanceElement(id);
   if (!element) return undefined;
-  const rect = visibleRect(element);
+  const rect = requireVisible ? visibleDocumentRect(element) : documentRect(element);
   if (!rect) return undefined;
+
+  const minimumX = 8;
+  const maximumX = documentWidth() - WORKER_WIDTH - 8;
 
   const candidates: Point[] = [
     { x: rect.left - WORKER_WIDTH / 2, y: rect.bottom + 4 },
@@ -243,15 +334,15 @@ function targetBesideElement(id: string, occupied: readonly Worker[]): Point | u
     { x: rect.left - WORKER_WIDTH - 6, y: rect.top + rect.height / 2 - WORKER_HEIGHT / 2 },
     { x: rect.right + 6, y: rect.top + rect.height / 2 - WORKER_HEIGHT / 2 },
   ].filter((point) =>
-    point.x >= 8 &&
-    point.x <= window.innerWidth - WORKER_WIDTH - 8 &&
-    point.y >= HEADER_CLEARANCE &&
-    point.y <= window.innerHeight - WORKER_HEIGHT - 8,
+    point.x >= minimumX &&
+    point.x <= maximumX &&
+    point.y >= 0 &&
+    point.y <= documentHeight() - WORKER_HEIGHT,
   );
 
   const fallback = {
-    x: clamp(rect.left + rect.width / 2 - WORKER_WIDTH / 2, 8, window.innerWidth - WORKER_WIDTH - 8),
-    y: clamp(rect.bottom + 4, HEADER_CLEARANCE, window.innerHeight - WORKER_HEIGHT - 8),
+    x: clamp(rect.left + rect.width / 2 - WORKER_WIDTH / 2, minimumX, maximumX),
+    y: clamp(rect.bottom + 4, 0, documentHeight() - WORKER_HEIGHT),
   };
   const options = candidates.length > 0 ? candidates : [fallback];
   const offset = hashText(id) % options.length;
@@ -268,10 +359,18 @@ function targetBesideElement(id: string, occupied: readonly Worker[]): Point | u
     .sort((a, b) => Number(b.clear) - Number(a.clear) || b.separation - a.separation)[0]?.point;
 }
 
-function scaffoldGeometry(id: string, damageIds: readonly string[]): Scaffold | undefined {
+function scaffoldGeometry(
+  id: string,
+  damageIds: readonly string[],
+  requireVisible = true,
+): Scaffold | undefined {
   const rects = damageIds.flatMap((damageId) => {
     const element = findMaintenanceElement(damageId);
-    const rect = element ? visibleRect(element) : undefined;
+    const rect = element
+      ? requireVisible
+        ? visibleDocumentRect(element)
+        : documentRect(element)
+      : undefined;
     return rect ? [rect] : [];
   });
   if (rects.length === 0) return undefined;
@@ -283,8 +382,8 @@ function scaffoldGeometry(id: string, damageIds: readonly string[]): Scaffold | 
   return {
     id,
     damageIds,
-    x: clamp(minimumX - 12, 8, window.innerWidth - width - 8),
-    platformY: clamp(maximumY + WORKER_HEIGHT + 8, HEADER_CLEARANCE + WORKER_HEIGHT, window.innerHeight - 44),
+    x: clamp(minimumX - 12, 8, documentWidth() - width - 8),
+    platformY: clamp(maximumY + WORKER_HEIGHT + 8, WORKER_HEIGHT, documentHeight() - 44),
     width,
     visible: true,
   };
@@ -295,7 +394,7 @@ function reconcileScaffolds(existing: readonly Scaffold[], brokenIds: readonly s
   const retained = existing.flatMap((scaffold) => {
     const activeIds = scaffold.damageIds.filter((id) => broken.has(id));
     if (activeIds.length === 0) return [];
-    const geometry = scaffoldGeometry(scaffold.id, scaffold.damageIds);
+    const geometry = scaffoldGeometry(scaffold.id, scaffold.damageIds, false);
     return [{ ...scaffold, ...(geometry ?? {}), visible: geometry !== undefined }];
   });
   const claimed = new Set(retained.flatMap((scaffold) => scaffold.damageIds));
@@ -306,7 +405,7 @@ function reconcileScaffolds(existing: readonly Scaffold[], brokenIds: readonly s
   for (const seedId of remaining) {
     if (used.has(seedId)) continue;
     const seed = findMaintenanceElement(seedId);
-    const seedRect = seed ? visibleRect(seed) : undefined;
+    const seedRect = seed ? visibleDocumentRect(seed) : undefined;
     if (!seedRect) continue;
     const cluster = [seedId];
     let minimumX = seedRect.left;
@@ -317,7 +416,7 @@ function reconcileScaffolds(existing: readonly Scaffold[], brokenIds: readonly s
     for (const candidateId of remaining) {
       if (candidateId === seedId || used.has(candidateId)) continue;
       const candidate = findMaintenanceElement(candidateId);
-      const rect = candidate ? visibleRect(candidate) : undefined;
+      const rect = candidate ? visibleDocumentRect(candidate) : undefined;
       if (!rect) continue;
       const nextMinimumX = Math.min(minimumX, rect.left);
       const nextMaximumX = Math.max(maximumX, rect.right);
@@ -346,7 +445,7 @@ function reconcileScaffolds(existing: readonly Scaffold[], brokenIds: readonly s
 function scaffoldRepairPoint(scaffold: Scaffold, damageId: string): Point | undefined {
   if (!scaffold.visible) return undefined;
   const element = findMaintenanceElement(damageId);
-  const rect = element ? visibleRect(element) : undefined;
+  const rect = element ? documentRect(element) : undefined;
   if (!rect) return undefined;
   const slot = scaffold.damageIds.indexOf(damageId);
   const offset = (slot - (scaffold.damageIds.length - 1) / 2) * 4;
@@ -356,11 +455,17 @@ function scaffoldRepairPoint(scaffold: Scaffold, damageId: string): Point | unde
   };
 }
 
-function jobPlan(worker: Worker, damageId: string, scaffolds: readonly Scaffold[], occupied: readonly Worker[]) {
+function jobPlan(
+  worker: Worker,
+  damageId: string,
+  scaffolds: readonly Scaffold[],
+  occupied: readonly Worker[],
+  requireVisible = true,
+) {
   const scaffold = scaffolds.find((candidate) => candidate.damageIds.includes(damageId));
   const repairPoint = scaffold
     ? scaffoldRepairPoint(scaffold, damageId)
-    : targetBesideElement(damageId, occupied);
+    : targetBesideElement(damageId, occupied, requireVisible);
   if (!repairPoint) return undefined;
 
   if (scaffold) {
@@ -378,7 +483,7 @@ function jobPlan(worker: Worker, damageId: string, scaffolds: readonly Scaffold[
     const ladderHeight = clamp(verticalDifference + 4, 40, 90);
     const basePoint = {
       x: repairPoint.x,
-      y: clamp(repairPoint.y + ladderHeight - 4, HEADER_CLEARANCE, window.innerHeight - WORKER_HEIGHT - 8),
+      y: clamp(repairPoint.y + ladderHeight - 4, 0, documentHeight() - WORKER_HEIGHT - 8),
     };
     return {
       destination: basePoint,
@@ -403,12 +508,12 @@ function jobPlan(worker: Worker, damageId: string, scaffolds: readonly Scaffold[
 
 function refreshedJobPlan(worker: Worker, damageId: string, scaffolds: readonly Scaffold[], occupied: readonly Worker[]) {
   const scaffold = scaffolds.find((candidate) => candidate.damageIds.includes(damageId));
-  if (scaffold || worker.equipment !== "ladder") return jobPlan(worker, damageId, scaffolds, occupied);
+  if (scaffold || worker.equipment !== "ladder") return jobPlan(worker, damageId, scaffolds, occupied, false);
 
-  const repairPoint = targetBesideElement(damageId, occupied);
+  const repairPoint = targetBesideElement(damageId, occupied, false);
   if (!repairPoint) return undefined;
   const requestedHeight = clamp(worker.equipmentHeight ?? LADDER_THRESHOLD, 40, 90);
-  const baseY = clamp(repairPoint.y + requestedHeight - 4, HEADER_CLEARANCE, window.innerHeight - WORKER_HEIGHT - 8);
+  const baseY = clamp(repairPoint.y + requestedHeight - 4, 0, documentHeight() - WORKER_HEIGHT - 8);
   return {
     destination: { x: repairPoint.x, y: baseY },
     equipment: "ladder" as const,
@@ -422,36 +527,33 @@ function refreshedJobPlan(worker: Worker, damageId: string, scaffolds: readonly 
   };
 }
 
-function crewBayIsNear() {
-  const bay = document.querySelector<HTMLElement>("[data-maintenance-crew-bay]");
-  if (!bay) return false;
-  const rect = bay.getBoundingClientRect();
-  return rect.top < window.innerHeight + 240 && rect.bottom > HEADER_CLEARANCE - 160;
-}
-
 function findRestSlot(id: string): RestSlot | undefined {
   const element = Array.from(document.querySelectorAll<HTMLElement>("[data-maintenance-rest-slot]"))
     .find((candidate) => candidate.dataset.maintenanceRestSlot === id);
   const kind = element?.dataset.restKind as RestKind | undefined;
   const rect = element?.getBoundingClientRect();
   if (!element || !kind || !rect || rect.width === 0 || rect.height === 0) return undefined;
-  return { id, kind, point: { x: rect.left, y: rect.top } };
+  return {
+    id,
+    kind,
+    point: { x: rect.left + window.scrollX, y: rect.top + window.scrollY },
+  };
 }
 
 function chooseRestSlot(worker: Worker, workers: readonly Worker[]): RestSlot | undefined {
-  if (!crewBayIsNear()) return undefined;
-  const capacity = window.innerWidth < 640 ? 1 : 2;
+  const capacity = window.innerWidth < 640 ? 3 : 6;
   const reserved = new Set(workers.flatMap((candidate) => candidate.restSlotId ? [candidate.restSlotId] : []));
   if (reserved.size >= capacity) return undefined;
 
   const chance: Record<WorkerPersonality, number> = {
-    slacker: 1,
-    carrier: 0.34,
-    inspector: 0.28,
-    generalist: 0.12,
-    engineer: 0.06,
+    slacker: 0.82,
+    carrier: 0.48,
+    inspector: 0.18,
+    generalist: 0.24,
+    engineer: 0.16,
   };
-  if (Math.random() > chance[worker.personality]) return undefined;
+  const occupancyAdjustment = reserved.size >= 2 ? 0.22 : 1;
+  if (Math.random() > chance[worker.personality] * occupancyAdjustment) return undefined;
 
   const preference: Record<WorkerPersonality, readonly RestKind[]> = {
     slacker: ["bench", "crate"],
@@ -474,18 +576,18 @@ function chooseRestSlot(worker: Worker, workers: readonly Worker[]): RestSlot | 
 }
 
 function restDuration(worker: Worker, kind: RestKind) {
-  if (kind === "console") return 3000 + Math.random() * 2000;
-  if (kind === "crate") return 2500 + Math.random() * 2000;
+  if (kind === "console") return 1800 + Math.random() * 1400;
+  if (kind === "crate") return 1800 + Math.random() * 1400;
   return worker.personality === "slacker"
-    ? 4000 + Math.random() * 5000
-    : 4000 + Math.random() * 2500;
+    ? 3000 + Math.random() * 2200
+    : 2200 + Math.random() * 1600;
 }
 
 function safeIdleDestination(worker: Worker): Point {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const point = {
-      x: clamp(worker.x + (Math.random() - 0.5) * 180, 18, window.innerWidth - WORKER_WIDTH - 18),
-      y: clamp(worker.y + (Math.random() - 0.5) * 120, HEADER_CLEARANCE, window.innerHeight - WORKER_HEIGHT - 18),
+      x: clamp(worker.x + (Math.random() - 0.5) * 180, 18, documentWidth() - WORKER_WIDTH - 18),
+      y: clamp(worker.y + (Math.random() - 0.5) * 120, 0, documentHeight() - WORKER_HEIGHT - 18),
     };
     if (positionIsClear(point)) return point;
   }
@@ -494,44 +596,99 @@ function safeIdleDestination(worker: Worker): Point {
 
 function restingDestination(worker: Worker): Point {
   return {
-    x: hashText(worker.id) % 2 === 0 ? 18 : window.innerWidth - WORKER_WIDTH - 18,
-    y: clamp(worker.y + (Math.random() - 0.5) * 160, HEADER_CLEARANCE, window.innerHeight - WORKER_HEIGHT - 18),
+    x: hashText(worker.id) % 2 === 0 ? 18 : documentWidth() - WORKER_WIDTH - 18,
+    y: clamp(worker.y + (Math.random() - 0.5) * 160, 0, documentHeight() - WORKER_HEIGHT - 18),
   };
 }
 
-function inspectionDestination(worker: Worker): { readonly point: Point; readonly id: string } | undefined {
-  const intactVisible = registeredParts().filter((element) =>
-    !element.hasAttribute("data-maintenance-damage") && visibleRect(element) !== undefined,
+function activityDestination(
+  worker: Worker,
+  occupied: readonly Worker[],
+  visibleOnly: boolean,
+): { readonly point: Point; readonly id: string } | undefined {
+  const candidates = registeredParts().filter((element) =>
+    !element.hasAttribute("data-maintenance-damage") &&
+    (!visibleOnly || visibleDocumentRect(element) !== undefined),
   );
-  if (intactVisible.length === 0) return undefined;
-  const element = intactVisible[hashText(`${worker.id}-${Date.now() >> 12}`) % intactVisible.length];
+  if (candidates.length === 0) return undefined;
+  const element = candidates[hashText(`${worker.id}-${Date.now() >> 11}`) % candidates.length];
   const id = element.dataset.maintenanceId;
   if (!id) return undefined;
-  const point = targetBesideElement(id, []);
+  const point = targetBesideElement(id, occupied, visibleOnly);
   return point ? { point, id } : undefined;
 }
 
-function movementDuration(distance: number) {
+function shouldInspect(personality: WorkerPersonality) {
+  const chance: Record<WorkerPersonality, number> = {
+    engineer: 0.58,
+    generalist: 0.55,
+    inspector: 0.9,
+    carrier: 0.34,
+    slacker: 0.18,
+  };
+  return Math.random() < chance[personality];
+}
+
+function movementDuration(distance: number, personality: WorkerPersonality = "generalist") {
   if (prefersReducedMotion()) return 0;
-  return Math.round(clamp(280 + distance * 1.25, 320, 1500));
+  const pace: Record<WorkerPersonality, number> = {
+    engineer: 0.9,
+    generalist: 1,
+    inspector: 1.04,
+    carrier: 1.08,
+    slacker: 1.18,
+  };
+  return Math.round(clamp((280 + distance * 1.25) * pace[personality], 320, 1650));
 }
 
 function exitWorker(worker: Worker): Worker {
   const edgeOffset = window.innerWidth < 640 ? 28 : 44;
+  const viewportLeft = window.scrollX;
+  const viewportRight = viewportLeft + window.innerWidth;
+  const viewportTop = window.scrollY;
+  const viewportBottom = viewportTop + window.innerHeight;
+  const isVisible = worker.x + WORKER_WIDTH > viewportLeft &&
+    worker.x < viewportRight &&
+    worker.y + WORKER_HEIGHT > viewportTop &&
+    worker.y < viewportBottom;
+  if (!isVisible) {
+    return {
+      ...worker,
+      state: "exiting",
+      assignedDamageId: undefined,
+      activityTargetId: undefined,
+      afterMove: undefined,
+      duration: 0,
+      pauseDuration: undefined,
+      carrying: false,
+      climbing: false,
+      equipment: undefined,
+      scaffoldId: undefined,
+      repairX: undefined,
+      repairY: undefined,
+      baseX: undefined,
+      baseY: undefined,
+      equipmentX: undefined,
+      equipmentY: undefined,
+      equipmentHeight: undefined,
+      restSlotId: undefined,
+      restKind: undefined,
+    };
+  }
   const exitPoints = [
     {
-      point: { x: -WORKER_WIDTH - edgeOffset, y: worker.y },
-      distance: Math.abs(worker.x + WORKER_WIDTH + edgeOffset),
+      point: { x: viewportLeft - WORKER_WIDTH - edgeOffset, y: worker.y },
+      distance: Math.abs(worker.x - (viewportLeft - WORKER_WIDTH - edgeOffset)),
       facing: "left" as const,
     },
     {
-      point: { x: window.innerWidth + edgeOffset, y: worker.y },
-      distance: Math.abs(window.innerWidth + edgeOffset - worker.x),
+      point: { x: viewportRight + edgeOffset, y: worker.y },
+      distance: Math.abs(viewportRight + edgeOffset - worker.x),
       facing: "right" as const,
     },
     {
-      point: { x: worker.x, y: window.innerHeight + edgeOffset },
-      distance: Math.abs(window.innerHeight + edgeOffset - worker.y),
+      point: { x: worker.x, y: viewportBottom + edgeOffset },
+      distance: Math.abs(viewportBottom + edgeOffset - worker.y),
       facing: worker.facing,
     },
   ];
@@ -573,12 +730,13 @@ function repairDuration(personality: WorkerPersonality) {
 }
 
 function idleWait(personality: WorkerPersonality) {
+  if (prefersReducedMotion()) return 5500 + Math.random() * 2500;
   const ranges: Record<WorkerPersonality, readonly [number, number]> = {
-    engineer: [2400, 4400],
-    inspector: [1900, 3400],
-    carrier: [2800, 5200],
-    slacker: [3600, 6200],
-    generalist: [2300, 4800],
+    engineer: [550, 1200],
+    inspector: [450, 1000],
+    carrier: [600, 1300],
+    slacker: [1000, 2000],
+    generalist: [500, 1100],
   };
   const [minimum, maximum] = ranges[personality];
   return minimum + Math.random() * (maximum - minimum);
@@ -586,6 +744,21 @@ function idleWait(personality: WorkerPersonality) {
 
 function shouldCarry(worker: Worker, damageId: string) {
   return worker.personality === "carrier" && hashText(damageId) % 2 === 0;
+}
+
+function retirementPriority(worker: Worker) {
+  if (worker.assignedDamageId !== undefined || worker.state === "spawning" || worker.state === "exiting") {
+    return undefined;
+  }
+  const priorities: Partial<Record<WorkerState, number>> = {
+    resting: 0,
+    "inspecting-console": 1,
+    idle: 2,
+    "moving-to-rest": 3,
+    wandering: 4,
+    inspecting: 5,
+  };
+  return priorities[worker.state];
 }
 
 function WorkerBot({
@@ -606,8 +779,10 @@ function WorkerBot({
   const speechStyle = speech ? {
     "--speech-lifetime": `${speech.duration}ms`,
   } as CSSProperties : undefined;
-  const bubbleSide = worker.x > window.innerWidth - 170 ? "left" : "right";
-  const bubbleVertical = worker.y < HEADER_CLEARANCE + 54 ? "below" : "above";
+  const viewportX = worker.x - window.scrollX;
+  const viewportY = worker.y - window.scrollY;
+  const bubbleSide = viewportX > window.innerWidth - 170 ? "left" : "right";
+  const bubbleVertical = viewportY < HEADER_CLEARANCE + 54 ? "below" : "above";
 
   return (
     <div
@@ -707,9 +882,10 @@ export function MaintenanceWorkerLayer({
 }: WorkerLayerProps) {
   const [system, setSystem] = useState<WorkerSystem>(() => ({ workers: initialWorkers(), queue: [], scaffolds: [] }));
   const [speech, setSpeech] = useState<readonly WorkerSpeech[]>([]);
-  const [viewportRevision, setViewportRevision] = useState(0);
+  const [layoutRevision, setLayoutRevision] = useState(0);
+  const layerRef = useRef<HTMLDivElement>(null);
   const stateTasks = useRef(new Map<string, ScheduledTask>());
-  const spawnTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const crewScaleTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const speechTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const speechRef = useRef<readonly WorkerSpeech[]>([]);
   const globalSpeechCooldownUntil = useRef(0);
@@ -718,10 +894,25 @@ export function MaintenanceWorkerLayer({
   const previousWorkerStates = useRef(new Map<string, WorkerState>());
   const previousBrokenIds = useRef(new Set(brokenElementIds));
   const reactedScaffolds = useRef(new Set<string>());
-  const viewportFrame = useRef<number | undefined>(undefined);
+  const resizeFrame = useRef<number | undefined>(undefined);
   const brokenIdsRef = useRef(new Set(brokenElementIds));
+  const nextWorkerIndex = useRef(system.workers.length);
   const brokenKey = useMemo(() => [...brokenElementIds].sort().join("\u0000"), [brokenElementIds]);
   const scaffoldKey = useMemo(() => system.scaffolds.map((scaffold) => scaffold.id).sort().join("\u0000"), [system.scaffolds]);
+  const activeJobCount = system.workers.filter((worker) => worker.assignedDamageId !== undefined).length;
+  const crewLimits = getCrewLimits(window.innerWidth);
+  const desiredCrewSize = getDesiredCrewSize({
+    brokenCount: brokenElementIds.length,
+    viewportWidth: window.innerWidth,
+    activeJobs: activeJobCount,
+  });
+  const retirementCandidateId = system.workers
+    .filter((worker) => retirementPriority(worker) !== undefined)
+    .sort((a, b) =>
+      (retirementPriority(a) ?? 99) - (retirementPriority(b) ?? 99) ||
+      b.id.localeCompare(a.id),
+    )[0]?.id;
+  const hasRetiringWorker = system.workers.some((worker) => worker.state === "exiting");
 
   const dismissSpeech = useCallback((workerId: string) => {
     const timer = speechTimers.current.get(workerId);
@@ -784,10 +975,10 @@ export function MaintenanceWorkerLayer({
   useLayoutEffect(() => {
     if (!exiting) return;
     for (const task of stateTasks.current.values()) clearTimeout(task.timer);
-    for (const timer of spawnTimers.current) clearTimeout(timer);
+    for (const timer of crewScaleTimers.current) clearTimeout(timer);
     for (const timer of speechTimers.current.values()) clearTimeout(timer);
     stateTasks.current.clear();
-    spawnTimers.current = [];
+    crewScaleTimers.current = [];
     speechTimers.current.clear();
     speechRef.current = [];
     brokenIdsRef.current.clear();
@@ -809,7 +1000,7 @@ export function MaintenanceWorkerLayer({
       const damageId = added[0];
       if (!damageId) return;
       const element = findMaintenanceElement(damageId);
-      const rect = element ? visibleRect(element) : undefined;
+      const rect = element ? visibleDocumentRect(element) : undefined;
       const candidates = system.workers.filter((worker) => worker.state !== "spawning");
       if (!rect || candidates.length === 0) return;
       const target = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
@@ -871,21 +1062,24 @@ export function MaintenanceWorkerLayer({
     return () => clearTimeout(timer);
   }, [system.workers, dismissSpeech, exiting]);
 
+  useLayoutEffect(() => {
+    layerRef.current?.style.setProperty("--worker-world-height", `${documentHeight()}px`);
+  }, []);
+
   useEffect(() => {
     if (exiting) return;
-    function refreshViewport() {
-      if (viewportFrame.current !== undefined) return;
-      viewportFrame.current = requestAnimationFrame(() => {
-        viewportFrame.current = undefined;
-        setViewportRevision((revision) => revision + 1);
+    function refreshLayout() {
+      if (resizeFrame.current !== undefined) return;
+      resizeFrame.current = requestAnimationFrame(() => {
+        resizeFrame.current = undefined;
+        layerRef.current?.style.setProperty("--worker-world-height", `${documentHeight()}px`);
+        setLayoutRevision((revision) => revision + 1);
       });
     }
-    window.addEventListener("scroll", refreshViewport, { passive: true });
-    window.addEventListener("resize", refreshViewport);
+    window.addEventListener("resize", refreshLayout);
     return () => {
-      window.removeEventListener("scroll", refreshViewport);
-      window.removeEventListener("resize", refreshViewport);
-      if (viewportFrame.current !== undefined) cancelAnimationFrame(viewportFrame.current);
+      window.removeEventListener("resize", refreshLayout);
+      if (resizeFrame.current !== undefined) cancelAnimationFrame(resizeFrame.current);
     };
   }, [exiting]);
 
@@ -903,26 +1097,46 @@ export function MaintenanceWorkerLayer({
   }, []);
 
   useEffect(() => {
-    if (exiting) return;
+    for (const timer of crewScaleTimers.current) clearTimeout(timer);
+    crewScaleTimers.current = [];
+    if (exiting || system.workers.length >= desiredCrewSize) return;
+
+    const workerIndex = nextWorkerIndex.current;
+    nextWorkerIndex.current += 1;
     const reducedMotion = prefersReducedMotion();
-    system.workers.forEach((worker, index) => {
-      const delay = reducedMotion ? 0 : index * 50;
-      const duration = reducedMotion ? 0 : 380;
-      const destination = spawnDestination(index);
-      spawnTimers.current.push(setTimeout(() => {
-        updateWorker(worker.id, (current) => ({ ...current, ...destination, duration }));
-      }, delay));
-      spawnTimers.current.push(setTimeout(() => {
-        updateWorker(worker.id, (current) => ({ ...current, state: "idle", duration: 0 }));
-      }, delay + duration));
-    });
+    const addTimer = setTimeout(() => {
+      setSystem((current) => current.workers.length >= desiredCrewSize
+        ? current
+        : { ...current, workers: [...current.workers, createWorker(workerIndex)] });
+    }, reducedMotion ? 0 : 90);
+    crewScaleTimers.current.push(addTimer);
+
     return () => {
-      for (const timer of spawnTimers.current) clearTimeout(timer);
-      spawnTimers.current = [];
+      for (const timer of crewScaleTimers.current) clearTimeout(timer);
+      crewScaleTimers.current = [];
     };
-    // The initial worker set remains stable until the layer unmounts.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [updateWorker, exiting]);
+  }, [desiredCrewSize, exiting, system.workers.length]);
+
+  useEffect(() => {
+    if (exiting || system.workers.length <= desiredCrewSize) return;
+    if (hasRetiringWorker) return;
+    if (!retirementCandidateId) return;
+
+    const timer = setTimeout(() => {
+      setSystem((current) => {
+        if (current.workers.length <= desiredCrewSize) return current;
+        const candidate = current.workers.find((worker) =>
+          worker.id === retirementCandidateId && retirementPriority(worker) !== undefined);
+        if (!candidate) return current;
+        return {
+          ...current,
+          workers: current.workers.map((worker) =>
+            worker.id === candidate.id ? exitWorker(worker) : worker),
+        };
+      });
+    }, 240);
+    return () => clearTimeout(timer);
+  }, [desiredCrewSize, exiting, hasRetiringWorker, retirementCandidateId, system.workers.length]);
 
   useEffect(() => {
     if (exiting) return;
@@ -950,7 +1164,7 @@ export function MaintenanceWorkerLayer({
         const scaffolds = reconcileScaffolds(current.scaffolds, brokenElementIds);
         workers = workers.map((worker) => {
           if (!worker.restSlotId) return worker;
-          const slot = crewBayIsNear() ? findRestSlot(worker.restSlotId) : undefined;
+          const slot = findRestSlot(worker.restSlotId);
           if (!slot) {
             changed = true;
             return {
@@ -970,7 +1184,7 @@ export function MaintenanceWorkerLayer({
             ...worker,
             ...slot.point,
             facing: slot.point.x < worker.x ? "left" as const : "right" as const,
-            duration: worker.state === "moving-to-rest" ? movementDuration(distance) : 0,
+            duration: worker.state === "moving-to-rest" ? movementDuration(distance, worker.personality) : 0,
           };
         });
         const activeJobStates = new Set<WorkerState>([
@@ -1013,7 +1227,7 @@ export function MaintenanceWorkerLayer({
             ...position,
             state: migratingToScaffold ? "moving-to-job" as const : worker.state,
             facing: position.x < worker.x ? "left" as const : "right" as const,
-            duration: migratingToScaffold ? movementDuration(migrationDistance) : worker.duration,
+            duration: migratingToScaffold ? movementDuration(migrationDistance, worker.personality) : worker.duration,
             climbing: migratingToScaffold ? false : worker.climbing,
           };
           const equipmentChanged = [
@@ -1046,7 +1260,7 @@ export function MaintenanceWorkerLayer({
     return () => clearTimeout(timer);
     // IDs are compared as a set while insertion order remains the queue's age order.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brokenKey, viewportRevision, exiting]);
+  }, [brokenKey, layoutRevision, exiting]);
 
   useEffect(() => {
     if (exiting) return;
@@ -1077,9 +1291,16 @@ export function MaintenanceWorkerLayer({
           available.forEach((worker, index) => {
             const plan = jobPlan(worker, damageId, current.scaffolds, occupied);
             if (!plan) return;
-            const restPenalty = ["moving-to-rest", "resting", "inspecting-console"].includes(worker.state) ? 10000 : 0;
+            const rolePenalty: Record<WorkerPersonality, number> = {
+              engineer: -140,
+              generalist: -80,
+              inspector: 0,
+              carrier: 45,
+              slacker: 180,
+            };
+            const restPenalty = ["moving-to-rest", "resting", "inspecting-console"].includes(worker.state) ? 260 : 0;
             const distance = Math.hypot(plan.destination.x - worker.x, plan.destination.y - worker.y);
-            const score = distance + restPenalty;
+            const score = distance + restPenalty + rolePenalty[worker.personality];
             if (score < nearestScore) {
               nearestDistance = distance;
               nearestScore = score;
@@ -1104,7 +1325,7 @@ export function MaintenanceWorkerLayer({
             restKind: undefined,
             pauseDuration: undefined,
             facing: destination.x < worker.x ? "left" : "right",
-            duration: movementDuration(nearestDistance),
+            duration: movementDuration(nearestDistance, worker.personality),
             carrying: shouldCarry(worker, damageId),
             climbing: false,
           };
@@ -1122,7 +1343,6 @@ export function MaintenanceWorkerLayer({
     const activeSignatures = new Map<string, string>();
 
     for (const worker of system.workers) {
-      if (worker.state === "spawning") continue;
       const signature = [
         worker.state,
         worker.assignedDamageId,
@@ -1144,7 +1364,9 @@ export function MaintenanceWorkerLayer({
       if (scheduled) clearTimeout(scheduled.timer);
 
       let delay = 0;
-      if (worker.state === "idle") delay = idleWait(worker.personality);
+      if (worker.state === "spawning") delay = worker.pauseDuration ?? 0;
+      else if (worker.state === "exiting") delay = worker.duration;
+      else if (worker.state === "idle") delay = idleWait(worker.personality);
       else if (["wandering", "moving-to-rest", "moving-to-job", "climbing", "climbing-down"].includes(worker.state)) delay = worker.duration + 40;
       else if (worker.state === "positioning") delay = POSITIONING_DURATION;
       else if (worker.state === "deploying-ladder") delay = prefersReducedMotion() ? 0 : LADDER_DEPLOY_DURATION;
@@ -1158,6 +1380,32 @@ export function MaintenanceWorkerLayer({
       const timer = setTimeout(() => {
         stateTasks.current.delete(worker.id);
 
+        if (worker.state === "spawning") {
+          updateWorker(worker.id, (current) => {
+            if (current.state !== "spawning") return current;
+            const destination = spawnDestination(current.sequence);
+            const distance = Math.hypot(destination.x - current.x, destination.y - current.y);
+            return {
+              ...current,
+              ...destination,
+              state: "wandering",
+              afterMove: "idle",
+              facing: destination.x < current.x ? "left" : "right",
+              duration: movementDuration(distance, current.personality),
+              pauseDuration: undefined,
+            };
+          });
+          return;
+        }
+
+        if (worker.state === "exiting") {
+          setSystem((current) => ({
+            ...current,
+            workers: current.workers.filter((candidate) => candidate.id !== worker.id),
+          }));
+          return;
+        }
+
         if (worker.state === "idle") {
           setSystem((currentSystem) => {
             const current = currentSystem.workers.find((candidate) => candidate.id === worker.id);
@@ -1165,6 +1413,12 @@ export function MaintenanceWorkerLayer({
             const restSlot = currentSystem.queue.length === 0
               ? chooseRestSlot(current, currentSystem.workers)
               : undefined;
+            const occupied = currentSystem.workers.filter((candidate) => candidate.id !== current.id);
+            const inspect = shouldInspect(current.personality);
+            const activity = restSlot
+              ? undefined
+              : activityDestination(current, occupied, inspect) ??
+                activityDestination(current, occupied, false);
             let next: Worker;
             if (restSlot) {
               const distance = Math.hypot(restSlot.point.x - current.x, restSlot.point.y - current.y);
@@ -1177,40 +1431,24 @@ export function MaintenanceWorkerLayer({
                 restSlotId: restSlot.id,
                 restKind: restSlot.kind,
                 facing: restSlot.point.x < current.x ? "left" : "right",
-                duration: movementDuration(distance),
+                duration: movementDuration(distance, current.personality),
                 pauseDuration: restDuration(current, restSlot.kind),
                 carrying: false,
                 climbing: false,
               };
-            } else if (current.personality === "inspector") {
-              const inspection = inspectionDestination(current);
-              if (inspection) {
-                const distance = Math.hypot(inspection.point.x - current.x, inspection.point.y - current.y);
-                next = {
-                  ...current,
-                  ...inspection.point,
-                  state: "wandering",
-                  activityTargetId: inspection.id,
-                  afterMove: "inspecting",
-                  facing: inspection.point.x < current.x ? "left" : "right",
-                  duration: movementDuration(distance),
-                  carrying: false,
-                  climbing: false,
-                };
-              } else {
-                const destination = safeIdleDestination(current);
-                const distance = Math.hypot(destination.x - current.x, destination.y - current.y);
-                next = {
-                  ...current,
-                  ...destination,
-                  state: "wandering",
-                  afterMove: "idle",
-                  facing: destination.x < current.x ? "left" : "right",
-                  duration: movementDuration(distance),
-                  carrying: false,
-                  climbing: false,
-                };
-              }
+            } else if (activity) {
+              const distance = Math.hypot(activity.point.x - current.x, activity.point.y - current.y);
+              next = {
+                ...current,
+                ...activity.point,
+                state: "wandering",
+                activityTargetId: activity.id,
+                afterMove: "inspecting",
+                facing: activity.point.x < current.x ? "left" : "right",
+                duration: movementDuration(distance, current.personality),
+                carrying: current.personality === "carrier",
+                climbing: false,
+              };
             } else {
               const destination = current.personality === "slacker" ? restingDestination(current) : safeIdleDestination(current);
               const distance = Math.hypot(destination.x - current.x, destination.y - current.y);
@@ -1220,7 +1458,7 @@ export function MaintenanceWorkerLayer({
                 state: "wandering",
                 afterMove: current.personality === "slacker" ? "resting" : "idle",
                 facing: destination.x < current.x ? "left" : "right",
-                duration: movementDuration(distance),
+                duration: movementDuration(distance, current.personality),
                 pauseDuration: current.personality === "slacker" ? 4000 + Math.random() * 5000 : undefined,
                 carrying: current.personality === "carrier",
                 climbing: false,
@@ -1238,7 +1476,7 @@ export function MaintenanceWorkerLayer({
           setSystem((currentSystem) => {
             const current = currentSystem.workers.find((candidate) => candidate.id === worker.id);
             if (!current || current.state !== "moving-to-rest") return currentSystem;
-            const slot = current.restSlotId && crewBayIsNear() ? findRestSlot(current.restSlotId) : undefined;
+            const slot = current.restSlotId ? findRestSlot(current.restSlotId) : undefined;
             if (!slot || currentSystem.queue.length > 0) {
               return {
                 ...currentSystem,
@@ -1259,7 +1497,7 @@ export function MaintenanceWorkerLayer({
                   ...current,
                   ...slot.point,
                   facing: slot.point.x < current.x ? "left" as const : "right" as const,
-                  duration: movementDuration(distance),
+                  duration: movementDuration(distance, current.personality),
                 }
               : {
                   ...current,
@@ -1280,10 +1518,15 @@ export function MaintenanceWorkerLayer({
           updateWorker(worker.id, (current) => {
             if (current.state !== "wandering") return current;
             if (current.afterMove === "inspecting" && current.activityTargetId) {
-              const target = targetBesideElement(current.activityTargetId, []);
+              const target = targetBesideElement(current.activityTargetId, [], false);
               if (!target) return { ...current, state: "idle", activityTargetId: undefined, afterMove: undefined, carrying: false, duration: 0 };
               const distance = Math.hypot(target.x - current.x, target.y - current.y);
-              if (distance > 18) return { ...current, ...target, facing: target.x < current.x ? "left" : "right", duration: movementDuration(distance) };
+              if (distance > 18) return {
+                ...current,
+                ...target,
+                facing: target.x < current.x ? "left" : "right",
+                duration: movementDuration(distance, current.personality),
+              };
             }
             return {
               ...current,
@@ -1315,7 +1558,7 @@ export function MaintenanceWorkerLayer({
             const currentWorker = current.workers.find((candidate) => candidate.id === worker.id);
             if (!currentWorker || currentWorker.assignedDamageId !== assignment) return current;
             const occupied = current.workers.filter((candidate) => candidate.id !== worker.id && candidate.assignedDamageId !== undefined);
-            const plan = jobPlan(currentWorker, assignment, current.scaffolds, occupied);
+            const plan = jobPlan(currentWorker, assignment, current.scaffolds, occupied, false);
             if (!plan) {
               return {
                 ...current,
@@ -1341,7 +1584,7 @@ export function MaintenanceWorkerLayer({
                 ...equipmentPlan,
                 ...destination,
                 facing: destination.x < candidate.x ? "left" : "right",
-                duration: movementDuration(distance),
+                duration: movementDuration(distance, currentWorker.personality),
                 climbing: false,
               } : {
                 ...candidate,
@@ -1374,7 +1617,7 @@ export function MaintenanceWorkerLayer({
               state: "climbing",
               climbing: true,
               carrying: false,
-              duration: movementDuration(distance),
+              duration: movementDuration(distance, current.personality),
             };
           });
           return;
@@ -1427,7 +1670,7 @@ export function MaintenanceWorkerLayer({
                 state: "climbing-down",
                 carrying: false,
                 climbing: true,
-                duration: movementDuration(distance),
+                duration: movementDuration(distance, current.personality),
               };
             }
             return {
@@ -1464,7 +1707,7 @@ export function MaintenanceWorkerLayer({
           return;
         }
 
-        if (worker.state === "celebrating" || worker.state === "resting" || worker.state === "inspecting-console") {
+        if (worker.state === "celebrating") {
           updateWorker(worker.id, (current) => current.state === worker.state
             ? {
                 ...current,
@@ -1476,6 +1719,49 @@ export function MaintenanceWorkerLayer({
                 duration: 0,
               }
             : current);
+          return;
+        }
+
+        if (worker.state === "resting" || worker.state === "inspecting-console") {
+          setSystem((currentSystem) => {
+            const current = currentSystem.workers.find((candidate) => candidate.id === worker.id);
+            if (!current || current.state !== worker.state) return currentSystem;
+            const occupied = currentSystem.workers.filter((candidate) => candidate.id !== current.id);
+            const inspect = shouldInspect(current.personality);
+            const activity = activityDestination(current, occupied, inspect) ??
+              activityDestination(current, occupied, false);
+            const next = activity
+              ? {
+                  ...current,
+                  ...activity.point,
+                  state: "wandering" as const,
+                  activityTargetId: activity.id,
+                  afterMove: "inspecting" as const,
+                  restSlotId: undefined,
+                  restKind: undefined,
+                  pauseDuration: undefined,
+                  facing: activity.point.x < current.x ? "left" as const : "right" as const,
+                  duration: movementDuration(
+                    Math.hypot(activity.point.x - current.x, activity.point.y - current.y),
+                    current.personality,
+                  ),
+                  carrying: current.personality === "carrier",
+                }
+              : {
+                  ...current,
+                  state: "idle" as const,
+                  restSlotId: undefined,
+                  restKind: undefined,
+                  pauseDuration: undefined,
+                  carrying: false,
+                  duration: 0,
+                };
+            return {
+              ...currentSystem,
+              workers: currentSystem.workers.map((candidate) =>
+                candidate.id === worker.id ? next : candidate),
+            };
+          });
         }
       }, delay);
 
@@ -1492,10 +1778,10 @@ export function MaintenanceWorkerLayer({
 
   useEffect(() => () => {
     for (const task of stateTasks.current.values()) clearTimeout(task.timer);
-    for (const timer of spawnTimers.current) clearTimeout(timer);
+    for (const timer of crewScaleTimers.current) clearTimeout(timer);
     for (const timer of speechTimers.current.values()) clearTimeout(timer);
     stateTasks.current.clear();
-    spawnTimers.current = [];
+    crewScaleTimers.current = [];
     speechTimers.current.clear();
     speechRef.current = [];
     globalSpeechCooldownUntil.current = 0;
@@ -1511,10 +1797,15 @@ export function MaintenanceWorkerLayer({
 
   return (
     <div
+      ref={layerRef}
       className={styles.layer}
+      style={{ "--worker-world-height": `${documentHeight()}px` } as CSSProperties}
       aria-hidden="true"
       data-worker-layer
       data-worker-phase={exiting ? "exiting" : "active"}
+      data-worker-count={renderedWorkers.length}
+      data-worker-target={desiredCrewSize}
+      data-worker-maximum={crewLimits.maximum}
       data-repair-queue-size={exiting ? 0 : system.queue.length}
     >
       {!exiting

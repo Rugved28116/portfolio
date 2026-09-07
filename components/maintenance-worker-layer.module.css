@@ -1,10 +1,13 @@
 .layer {
-  position: fixed;
+  position: absolute;
   z-index: 30;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--worker-world-height, 100vh);
   overflow: hidden;
   pointer-events: none;
-  contain: strict;
+  contain: layout style paint;
 }
 
 .worker {
@@ -280,11 +283,11 @@
 
 .worker[data-worker-state="resting"] .antenna {
   transform-origin: 15px 5px;
-  transform: rotate(18deg);
+  animation: rgb-worker-rest-look 1800ms steps(2, end) infinite;
 }
 
 .worker[data-worker-state="resting"] .visor {
-  opacity: 0.42;
+  animation: rgb-worker-rest-visor 2200ms steps(2, end) infinite;
 }
 
 .worker[data-worker-state="inspecting-console"] .body {
@@ -325,6 +328,16 @@
 
 @keyframes rgb-worker-look {
   50% { transform: translateX(1px) rotate(8deg); }
+}
+
+@keyframes rgb-worker-rest-look {
+  0%, 45% { transform: rotate(18deg); }
+  46%, 100% { transform: rotate(8deg); }
+}
+
+@keyframes rgb-worker-rest-visor {
+  0%, 65% { opacity: 0.42; }
+  66%, 100% { opacity: 0.68; }
 }
 
 @keyframes rgb-worker-inspect-beam {
@@ -399,4 +412,6 @@
   .worker[data-worker-state="inspecting"] .inspectBeam { opacity: 0.45; }
   .worker[data-worker-state="repairing"] .spark { opacity: 0.75; }
   .worker[data-worker-state="celebrating"] .visor { fill: #ecece7; }
+  .worker[data-worker-state="resting"] .antenna { transform: rotate(18deg); }
+  .worker[data-worker-state="resting"] .visor { opacity: 0.42; }
 }

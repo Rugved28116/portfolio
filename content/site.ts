@@ -6,7 +6,7 @@ export const siteContent = {
     title: "Rugved Ganesh Bhor | RGB Official",
     description:
       "Portfolio of Rugved Ganesh Bhor, also known as RGB Official, featuring projects and experiments across cybersecurity, AI, systems, robotics, hardware and software.",
-    siteUrl: undefined,
+    siteUrl: "https://portfolio-ochre-psi-74.vercel.app",
     githubUrl: "https://github.com/Rugved28116",
     linkedinUrl: "https://www.linkedin.com/in/rugved28116/",
     email: "rugved4327@gmail.com",
@@ -117,5 +117,3 @@ export const siteContent = {
     prompt: "rugved@rgb-official:~$",
   },
 } satisfies SiteContent;
-
-// TODO: Add the confirmed production URL, contact and social links when provided.
